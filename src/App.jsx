@@ -7,7 +7,6 @@ import { Toaster } from "sonner";
 import routes from "./route/SidebarRaoute";
 
 // Load extra driver pages explicitly
-const DriverLogin = lazy(() => import("./pages/driver/DriverLogin"));
 const DriverRegister = lazy(() => import("./pages/driver/DriverRegister"));
 const DriverTripDetail = lazy(() => import("./pages/driver/DriverTripDetail"));
 const DriverSupportTicket = lazy(() => import("./pages/driver/DriverSupportTicket"));
@@ -34,9 +33,7 @@ function App() {
         <Route path="/login" element={isLoggedIn ? <Navigate to="/dashboard" replace /> : <Login />} />
         
         {/* Driver Public Auth Routes */}
-        <Route path="/driver/login" element={isLoggedIn ? <Navigate to="/dashboard" replace /> : (
-          <Suspense fallback={<LoadingSpinner />}><DriverLogin /></Suspense>
-        )} />
+        <Route path="/driver/login" element={<Navigate to="/login" replace />} />
         <Route path="/driver/register" element={isLoggedIn ? <Navigate to="/dashboard" replace /> : (
           <Suspense fallback={<LoadingSpinner />}><DriverRegister /></Suspense>
         )} />

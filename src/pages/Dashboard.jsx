@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { driverService } from '../api/driverApi';
 import { useAuth } from '../context/AuthContext';
 import { toast } from 'sonner';
+import { getSocket } from '../socket/socket';
 import Highcharts from 'highcharts';
 import HighchartsReact from 'highcharts-react-official';
 import HC_more from 'highcharts/highcharts-more';
@@ -118,7 +119,7 @@ const OnlineToggle = ({ isOnline, onToggle, loading }) => (
 // Main Driver Dashboard Component
 export default function DriverDashboard() {
   const navigate = useNavigate();
-  const { admin: driver, setLoginData, token } = useAuth();
+  const { admin: driver } = useAuth();
 
   // States
   const [profile, setProfile] = useState(null);
@@ -162,49 +163,40 @@ export default function DriverDashboard() {
 
   useEffect(() => {
     fetchDashboardData();
-    // Start GPS tracking
-    startLocationTracking();
-    return () => stopLocationTracking();
+
+    // DashboardLayout already socket manage karta hai — sirf events sun lo
+    const socket = getSocket();
+    if (!socket) return;
+
+    socket.on('new_ride_request', (data) => {
+      toast.success(`🚗 New Ride! Pickup: ${data.pickup || ''} | Fare: ₹${data.fare || ''}`, { duration: 8000 });
+      fetchDashboardData();
+    });
+
+    socket.on('ride_status_update', (data) => {
+      toast.info(`Ride status: ${data.status}`);
+      fetchDashboardData();
+    });
+
+    socket.on('admin_message', (data) => {
+      toast.info(`📢 Admin: ${data.message}`);
+    });
+
+    return () => {
+      socket.off('new_ride_request');
+      socket.off('ride_status_update');
+      socket.off('admin_message');
+    };
   }, []);
 
-  // GPS Location Tracking
-  const startLocationTracking = () => {
-    if (navigator.geolocation) {
-      const watchId = navigator.geolocation.watchPosition(
-        async (position) => {
-          const { latitude, longitude } = position.coords;
-          setLocation({ lat: latitude, lng: longitude });
-
-          // Update location on server every 30 seconds
-          if (profile?.isOnline) {
-            await driverService.updateLocation(latitude, longitude);
-          }
-        },
-        (error) => console.error('GPS Error:', error),
-        { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
-      );
-      window.gpsWatchId = watchId;
-    }
-  };
-
-  const stopLocationTracking = () => {
-    if (window.gpsWatchId) {
-      navigator.geolocation.clearWatch(window.gpsWatchId);
-    }
-  };
-
-  // Toggle Online Status
   const handleToggleOnline = async () => {
     setOnlineToggleLoading(true);
     try {
-      const res = await driverService.toggleOnline(location.lat, location.lng);
-      if (res.success) {
-        setProfile(prev => ({ ...prev, isOnline: !prev.isOnline }));
-        toast.success(`You are now ${!profile?.isOnline ? 'Online' : 'Offline'}`);
-        fetchDashboardData();
-      }
+      await driverService.toggleOnline(null, null);
+      setProfile(prev => ({ ...prev, isOnline: !prev?.isOnline }));
+      toast.info(profile?.isOnline ? '🔴 You are now Offline' : '🟢 You are now Online!');
     } catch (err) {
-      toast.error(err?.message || 'Failed to toggle status');
+      toast.error('Failed to update status');
     } finally {
       setOnlineToggleLoading(false);
     }
@@ -215,12 +207,15 @@ export default function DriverDashboard() {
     try {
       const res = await driverService.respondToRequest(requestId, 'accept');
       if (res.success) {
-        toast.success('Ride accepted!');
+        const otp = res.booking?.tripData?.startOtp;
+        toast.success(`✅ Ride Accepted! ${otp ? `OTP: ${otp}` : ''}`, { duration: 6000 });
         fetchDashboardData();
-        navigate(`/driver/trip/${res.booking?._id || requestId}`);
+        if (res.booking?._id) {
+          navigate(`/driver/trip/${res.booking._id}`);
+        }
       }
     } catch (err) {
-      toast.error(err?.message || 'Failed to accept ride');
+      toast.error(err?.response?.data?.message || err?.message || 'Failed to accept ride');
     }
   };
 
@@ -229,11 +224,11 @@ export default function DriverDashboard() {
     try {
       const res = await driverService.respondToRequest(requestId, 'reject');
       if (res.success) {
-        toast.info('Ride rejected');
+        toast.info('❌ Ride Rejected');
         fetchDashboardData();
       }
     } catch (err) {
-      toast.error(err?.message || 'Failed to reject ride');
+      toast.error(err?.response?.data?.message || err?.message || 'Failed to reject ride');
     }
   };
 
@@ -670,27 +665,33 @@ export default function DriverDashboard() {
             <h3 className="text-sm font-semibold text-gray-900">Pending Ride Requests ({pendingRequests.length})</h3>
           </div>
           <div className="divide-y divide-gray-200">
-            {pendingRequests.map((req, idx) => (
-              <div key={idx} className="p-6 hover:bg-gray-50 transition-colors">
+            {pendingRequests.map((req, idx) => {
+              // Backend response: req._id = requestId, req.booking = booking details
+              const booking = req.booking || req;
+              const passenger = booking.passengerDetails || {};
+              const pickup = booking.pickup || {};
+              const drop = booking.drop || {};
+              return (
+              <div key={req._id || idx} className="p-6 hover:bg-gray-50 transition-colors">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                   <div className="flex items-center gap-4">
                     <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
                       <FaUser className="text-blue-600" size={20} />
                     </div>
                     <div>
-                      <p className="font-semibold text-gray-900">{req.passengerDetails?.name || req.user?.name || 'Passenger'}</p>
-                      <p className="text-sm text-gray-500">{req.passengerDetails?.phone || req.user?.phone || '—'}</p>
+                      <p className="font-semibold text-gray-900">{passenger.name || 'Passenger'}</p>
+                      <p className="text-sm text-gray-500">{passenger.phone || '—'}</p>
                       <div className="flex items-center gap-3 mt-1 text-xs text-gray-400">
-                        <span className="flex items-center gap-1"><Navigation size={12} /> {req.pickup?.address?.split(',')[0]}</span>
+                        <span className="flex items-center gap-1"><Navigation size={12} /> {pickup.address?.split(',')[0] || '—'}</span>
                         <span>→</span>
-                        <span className="flex items-center gap-1"><MapPin size={12} /> {req.drop?.address?.split(',')[0]}</span>
+                        <span className="flex items-center gap-1"><MapPin size={12} /> {drop.address?.split(',')[0] || '—'}</span>
                       </div>
                     </div>
                   </div>
                   <div className="flex items-center gap-3">
                     <div className="text-right">
-                      <p className="text-lg font-bold text-green-600">₹{req.fareEstimate || 0}</p>
-                      <p className="text-xs text-gray-500">{req.rideType} • {req.seatsBooked} seat(s)</p>
+                      <p className="text-lg font-bold text-green-600">₹{booking.fareEstimate || 0}</p>
+                      <p className="text-xs text-gray-500">{booking.rideType || 'Ride'} • {booking.estimatedDistanceKm || 0} km</p>
                     </div>
                     <div className="flex gap-2">
                       <button
@@ -709,7 +710,8 @@ export default function DriverDashboard() {
                   </div>
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}

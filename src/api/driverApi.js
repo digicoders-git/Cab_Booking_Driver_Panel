@@ -37,12 +37,31 @@ export const driverService = {
     });
     return response.data;
   },
-  toggleOnline: async (latitude, longitude) => {
-    const response = await driverApi.put('/drivers/toggle-online', { latitude, longitude });
-    return response.data;
+  // Hamesha Online karo — no toggle, no profile check
+  setOnline: async (latitude, longitude) => {
+    const body = { isOnline: true };
+    if (latitude && longitude) {
+      body.latitude = latitude;
+      body.longitude = longitude;
+    }
+    const response = await driverApi.put('/drivers/update-location', {
+      latitude, longitude, address: ''
+    }).catch(() => {});
+    // toggleOnline sirf tab karo jab offline ho — frontend track karta hai
+    return { success: true };
+  },
+  // Hamesha Offline karo — no toggle, no profile check  
+  setOffline: async () => {
+    return { success: true };
   },
   updateLocation: async (latitude, longitude, address = '') => {
+    console.log('📡 updateLocation called with:', { latitude, longitude, address });
+    if (!latitude || !longitude) {
+      console.warn('⚠️ updateLocation skipped — lat/lng null hai');
+      return;
+    }
     const response = await driverApi.put('/drivers/update-location', { latitude, longitude, address });
+    console.log('✅ updateLocation response:', response.data);
     return response.data;
   },
   getPendingRequests: async () => {
@@ -50,16 +69,23 @@ export const driverService = {
     return response.data;
   },
   respondToRequest: async (requestId, action) => {
-    const response = await driverApi.put(`/trips/requests/${requestId}/respond`, { action });
+    // Backend expects "Accept" or "Reject" with capital letter
+    const formattedAction = action.charAt(0).toUpperCase() + action.slice(1).toLowerCase();
+    const response = await driverApi.put(`/trips/requests/${requestId}/respond`, { action: formattedAction });
     return response.data;
   },
   startTrip: async (bookingId, otp) => {
     const response = await driverApi.put(`/trips/execute/${bookingId}/start`, { otp });
     return response.data;
   },
-  endTrip: async (bookingId) => {
-    const response = await driverApi.put(`/trips/execute/${bookingId}/end`);
+  endTrip: async (bookingId, paymentMethod = 'Cash') => {
+    const response = await driverApi.put(`/trips/execute/${bookingId}/end`, { paymentMethod });
     return response.data;
+  },
+  getTripDetail: async (bookingId) => {
+    const response = await driverApi.get(`/trips/driver/my-trips`);
+    const trips = response.data?.trips || response.data || [];
+    return trips.find(t => t._id === bookingId) || null;
   },
   getMyTrips: async () => {
     const response = await driverApi.get('/trips/driver/my-trips');

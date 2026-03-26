@@ -44,17 +44,22 @@ export default function DriverTrips() {
 
   const stats = useMemo(() => {
     const total = trips.length;
-    const completed = trips.filter(t => t.status === 'completed').length;
-    const ongoing = trips.filter(t => t.status === 'ongoing').length;
-    const cancelled = trips.filter(t => t.status === 'cancelled').length;
-    const totalEarnings = trips.reduce((sum, t) => sum + (t.fareEstimate || 0), 0);
+    const completed = trips.filter(t => (t.status || t.bookingStatus)?.toLowerCase() === 'completed').length;
+    const ongoing = trips.filter(t => (t.status || t.bookingStatus)?.toLowerCase() === 'ongoing').length;
+    const cancelled = trips.filter(t => (t.status || t.bookingStatus)?.toLowerCase() === 'cancelled').length;
+    const totalEarnings = trips.reduce((sum, t) => sum + (t.actualFare || t.fareEstimate || 0), 0);
     const completionRate = total ? ((completed / total) * 100).toFixed(1) : 0;
     return { total, completed, ongoing, cancelled, totalEarnings, completionRate };
   }, [trips]);
 
   const filteredTrips = useMemo(() => {
     let filtered = [...trips];
-    if (filter !== 'all') filtered = filtered.filter(t => t.status?.toLowerCase() === filter);
+    if (filter !== 'all') {
+      filtered = filtered.filter(t => {
+        const tripStatus = (t.status || t.bookingStatus)?.toLowerCase();
+        return tripStatus === filter;
+      });
+    }
     if (search) {
       const q = search.toLowerCase();
       filtered = filtered.filter(t =>
@@ -70,12 +75,15 @@ export default function DriverTrips() {
   const totalPages = Math.ceil(filteredTrips.length / itemsPerPage);
   const displayedTrips = filteredTrips.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
-  const getStatusBadge = (status) => {
-    switch (status?.toLowerCase()) {
+  const getStatusBadge = (trip) => {
+    const status = (trip.status || trip.bookingStatus)?.toLowerCase();
+    switch (status) {
       case 'completed': return { label: 'Completed', color: '#10B981', bg: '#10B98115', icon: CheckCircle };
       case 'ongoing': return { label: 'Ongoing', color: '#3B82F6', bg: '#3B82F615', icon: Clock };
       case 'cancelled': return { label: 'Cancelled', color: '#EF4444', bg: '#EF444415', icon: Ban };
-      default: return { label: status || 'Pending', color: '#F59E0B', bg: '#F59E0B15', icon: AlertCircle };
+      case 'accepted': return { label: 'Accepted', color: '#F59E0B', bg: '#F59E0B15', icon: AlertCircle };
+      case 'pending': return { label: 'Pending', color: '#F59E0B', bg: '#F59E0B15', icon: AlertCircle };
+      default: return { label: status || 'Unknown', color: '#6B7280', bg: '#6B728015', icon: AlertCircle };
     }
   };
 
@@ -167,7 +175,7 @@ export default function DriverTrips() {
                   </thead>
                   <tbody className="divide-y divide-gray-200">
                     {displayedTrips.map((trip) => {
-                      const status = getStatusBadge(trip.status);
+                      const status = getStatusBadge(trip);
                       const StatusIcon = status.icon;
                       return (
                         <tr key={trip._id} className="hover:bg-gray-50 transition-colors group">
@@ -199,7 +207,7 @@ export default function DriverTrips() {
                             <p className="text-xs text-gray-400">{new Date(trip.createdAt).toLocaleTimeString()}</p>
                           </td>
                           <td className="px-6 py-4 text-right">
-                            <p className="text-lg font-bold text-green-600">₹{trip.fareEstimate || 0}</p>
+                            <p className="text-lg font-bold text-green-600">₹{trip.actualFare || trip.fareEstimate || 0}</p>
                           </td>
                           <td className="px-6 py-4 text-center">
                             <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium"
@@ -209,7 +217,7 @@ export default function DriverTrips() {
                             </span>
                           </td>
                           <td className="px-6 py-4 text-center">
-                            <button onClick={() => navigate(`/driver/trip/${trip._id}`)}
+                            <button onClick={() => navigate(`/driver/trip/${trip._id.slice(-8)}`)}
                               className="p-2 hover:bg-gray-100 rounded-lg text-blue-600 transition-all">
                               <FaEye size={16} />
                             </button>

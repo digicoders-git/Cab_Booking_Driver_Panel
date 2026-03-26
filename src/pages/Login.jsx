@@ -211,6 +211,18 @@ const Login = () => {
             )}
           </button>
         </form>
+
+        {/* Register Link */}
+        <p className="text-center text-xs mt-4" style={{ color: themeColors.textSecondary }}>
+          New driver?{" "}
+          <button
+            onClick={() => navigate("/driver/register")}
+            className="font-semibold hover:underline"
+            style={{ color: themeColors.primary }}
+          >
+            Register here
+          </button>
+        </p>
       </div>
     </div>
   );
