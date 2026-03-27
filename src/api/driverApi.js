@@ -54,12 +54,14 @@ export const driverService = {
   setOffline: async () => {
     return { success: true };
   },
+  
   updateLocation: async (latitude, longitude, address = '') => {
     console.log('📡 updateLocation called with:', { latitude, longitude, address });
     if (!latitude || !longitude) {
       console.warn('⚠️ updateLocation skipped — lat/lng null hai');
       return;
     }
+
     const response = await driverApi.put('/drivers/update-location', { latitude, longitude, address });
     console.log('✅ updateLocation response:', response.data);
     return response.data;

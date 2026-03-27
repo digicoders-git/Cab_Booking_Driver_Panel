@@ -94,9 +94,12 @@ const DashboardLayout = () => {
 
     let lastLat = null;
     let lastLng = null;
-    const MIN_DISTANCE_METERS = 50; // 50 meter move karne pe hi update karo
-    const LOCATION_INTERVAL = 30 * 1000; // 30 seconds
+    const MIN_DISTANCE_METERS = 1; // 1 meter move karne pe hi update karo (Live)
+    const LOCATION_INTERVAL = 1000; // 1 second (Extreme Real-time)
     let lastUpdateTime = 0;
+
+    // GPS loaction ko Wathch  kar rha ahi 
+
 
     const watchId = navigator.geolocation.watchPosition(
       async (position) => {
@@ -121,7 +124,7 @@ const DashboardLayout = () => {
         lastLng = longitude;
         lastUpdateTime = now;
 
-        // Socket se bhejo — HTTP request nahi!
+        // Socket se bej Diya   bina http ke 
         emitLocation(driverId, latitude, longitude);
 
         // Har 5 min mein address bhi update karo (HTTP se)
