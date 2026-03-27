@@ -112,8 +112,8 @@ const DashboardLayout = () => {
 
     let lastLat = null;
     let lastLng = null;
-    const MIN_DISTANCE_METERS = 1; // 1 meter move karne pe hi update karo (Live)
-    const LOCATION_INTERVAL = 1000; // 1 second (Extreme Real-time)
+    const MIN_DISTANCE_METERS = 0; // Extreme Live (no threshold)
+    const LOCATION_INTERVAL = 0;   // Extreme Real-time (no throttle)
     let lastUpdateTime = 0;
 
     // GPS loaction ko Wathch  kar rha ahi 
@@ -124,10 +124,10 @@ const DashboardLayout = () => {
         const { latitude, longitude } = position.coords;
         const now = Date.now();
 
-        // 30 second se pehle update mat karo
+        // Har 1 Second se pehle update mat karo
         if (now - lastUpdateTime < LOCATION_INTERVAL) return;
 
-        // 50 meter se kam move kiya toh update mat karo
+        // 1 Meter se kam move kiya toh update mat karo (Extreme Live)
         if (lastLat && lastLng) {
           const dist = Math.sqrt(
             Math.pow((latitude - lastLat) * 111000, 2) +
@@ -142,10 +142,10 @@ const DashboardLayout = () => {
         lastLng = longitude;
         lastUpdateTime = now;
 
-        // Socket se bej Diya   bina http ke 
+        // Socket se bhej Diya (Instant without HTTP)
         emitLocation(driverId, latitude, longitude);
 
-        // Har 5 min mein address bhi update karo (HTTP se)
+        // Har 5 min mein address bhi update karo (HTTP se for persistence)
         if (now - lastAddressUpdateRef.current >= ADDRESS_UPDATE_INTERVAL) {
           try {
             const address = await getAddressFromCoords(latitude, longitude);
@@ -155,7 +155,7 @@ const DashboardLayout = () => {
         }
       },
       (err) => console.error('GPS:', err),
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 }
+      { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
     );
     return () => navigator.geolocation.clearWatch(watchId);
   }, [admin?._id]);
