@@ -17,7 +17,8 @@ import {
   FaSquare,
   FaUser,
   FaCar,
-  FaBell
+  FaBell,
+  FaPowerOff
 } from "react-icons/fa";
 
 const SettingsModal = ({
@@ -257,7 +258,9 @@ const SettingsModal = ({
 
 const Header = memo(({
   toggleSidebar,
-  currentPageTitle
+  currentPageTitle,
+  isOnline,
+  onToggleOnline
 }) => {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const { themeColors, toggleTheme, palette, changePalette, availablePalettes } = useTheme();
@@ -297,8 +300,23 @@ const Header = memo(({
           </h2>
         </div>
 
-        {/* Right Side — Notification + Profile Button */}
+        {/* Right Side — Online/Offline + Notification + Profile Button */}
         <div className="flex items-center gap-3">
+          {/* Online/Offline Toggle Button */}
+          <button
+            onClick={onToggleOnline}
+            className="flex items-center gap-2 px-3 py-2 rounded-xl border transition-all hover:shadow-md font-medium text-sm"
+            style={{
+              backgroundColor: isOnline ? '#10B981' : '#EF4444',
+              borderColor: isOnline ? '#059669' : '#DC2626',
+              color: '#FFFFFF'
+            }}
+            title={isOnline ? 'Click to go Offline' : 'Click to go Online'}
+          >
+            <FaPowerOff size={14} className={isOnline ? '' : 'animate-pulse'} />
+            <span className="hidden sm:inline">{isOnline ? 'Online' : 'Offline'}</span>
+          </button>
+          
           {/* Notification Button */}
           <button
             onClick={() => navigate('/driver/notifications')}

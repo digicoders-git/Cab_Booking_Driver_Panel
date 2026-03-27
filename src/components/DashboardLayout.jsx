@@ -13,6 +13,7 @@ import { toast } from "sonner";
 
 const DashboardLayout = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [isDriverOnline, setIsDriverOnline] = useState(false); // Online/Offline state
   const { admin, logout } = useAuth();
   const { themeColors, toggleTheme, palette, changePalette } = useTheme();
   const { currentFont, corporateFonts, changeFont } = useFont();
@@ -55,6 +56,7 @@ const DashboardLayout = () => {
   const goOnlineWithLocation = useCallback(async () => {
     if (isOnlineRef.current) return; // Already online hai — dobara mat karo
     isOnlineRef.current = true; // Pehle set karo — race condition rokne ke liye
+    setIsDriverOnline(true); // UI update
 
     const driverId = admin?._id || admin?.id;
 
@@ -86,6 +88,22 @@ const DashboardLayout = () => {
       toast.success('🟢 You are now Online!');
     }
   }, [admin?._id]);
+
+  // Toggle Online/Offline
+  const handleToggleOnline = useCallback(async () => {
+    const driverId = admin?._id || admin?.id;
+    
+    if (isOnlineRef.current) {
+      // Offline karo
+      isOnlineRef.current = false;
+      setIsDriverOnline(false);
+      forceOffline(driverId);
+      toast.info('🔴 You are now Offline');
+    } else {
+      // Online karo
+      goOnlineWithLocation();
+    }
+  }, [admin?._id, goOnlineWithLocation]);
 
   // GPS tracking — Socket se location bhejo, HTTP nahi!
   useEffect(() => {
@@ -154,13 +172,13 @@ const DashboardLayout = () => {
     console.log('🔌 Socket state after connect:', socket.connected ? 'CONNECTED' : 'CONNECTING...');
 
     const handleOnline = () => {
-      console.log('🟢 handleOnline called, driverId:', driverId);
-      forceOnline(driverId);
-      goOnlineWithLocation();
+      console.log('🔌 Socket connected, waiting for manual toggle...');
+      // forceOnline(driverId);        // ✅ Backend sambhal lega - Manual toggle ke liye wait karo
+      // goOnlineWithLocation();       // ✅ Driver khud button dabake online hoga
     };
 
     if (socket.connected) {
-      console.log('🔌 Socket already connected, calling handleOnline immediately');
+      console.log('🔌 Socket already connected, NOT calling auto-online');
       handleOnline();
     } else {
       console.log('🔌 Socket not connected yet, waiting for connect event...');
@@ -197,11 +215,12 @@ const DashboardLayout = () => {
 
   const handleLogout = useCallback(async () => {
     const driverId = admin?._id || admin?.id;
-    if (isOnlineRef.current) {
-      isOnlineRef.current = false;
-      forceOffline(driverId); // Socket se offline — toggleOnline nahi!
-    }
+    
+    isOnlineRef.current = false;     // ✅ Internal ref update
+    
+    // ✅ Backend sambhal lega auto-offline, bas socket disconnect karo
     disconnectSocket(driverId);
+    
     hasInitialized.current = false;
     logout();
     navigate("/login", { replace: true });
@@ -235,6 +254,8 @@ const DashboardLayout = () => {
           palette={palette}
           changePalette={changePalette}
           toggleTheme={toggleTheme}
+          isOnline={isDriverOnline}
+          onToggleOnline={handleToggleOnline}
         />
         <main className="flex-1 overflow-y-auto p-6" style={{ backgroundColor: themeColors.background }}>
           <Outlet />
