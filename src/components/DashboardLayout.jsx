@@ -10,10 +10,13 @@ import Header from "./Header";
 import { connectSocket, disconnectSocket, forceOnline, forceOffline, emitLocation } from "../socket/socket";
 import { driverService } from "../api/driverApi";
 import { toast } from "sonner";
+import RideRequestModal from "./RideRequestModal";
 
 const DashboardLayout = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isDriverOnline, setIsDriverOnline] = useState(false); // Online/Offline state
+  const [rideRequest, setRideRequest] = useState(null);
+  const [showRideModal, setShowRideModal] = useState(false);
   const { admin, logout } = useAuth();
   const { themeColors, toggleTheme, palette, changePalette } = useTheme();
   const { currentFont, corporateFonts, changeFont } = useFont();
@@ -187,9 +190,23 @@ const DashboardLayout = () => {
 
     socket.on('new_ride_request', (data) => {
       console.log('🚗 new_ride_request received:', data);
+      
+      // Show modal instead of just toast
+      setRideRequest(data);
+      setShowRideModal(true);
+      
+      // Also show toast as backup
       toast.success(
-        `🚗 New Ride! Pickup: ${data.pickup || ''} | Fare: ₹${data.fare || ''}`,
-        { duration: 10000 }
+        `🚗 New Ride Request! Tap to view details`,
+        { 
+          duration: 5000,
+          action: {
+            label: 'View',
+            onClick: () => {
+              setShowRideModal(true);
+            }
+          }
+        }
       );
     });
 
@@ -260,6 +277,25 @@ const DashboardLayout = () => {
         <main className="flex-1 overflow-y-auto p-6" style={{ backgroundColor: themeColors.background }}>
           <Outlet />
         </main>
+        
+        {/* Ride Request Modal */}
+        <RideRequestModal
+          isOpen={showRideModal}
+          onClose={() => {
+            setShowRideModal(false);
+            setRideRequest(null);
+          }}
+          rideData={rideRequest}
+          onAccept={(data) => {
+            console.log('Ride accepted:', data);
+            toast.success('🚗 Ride accepted! Navigate to pickup location.');
+            navigate('/driver/trips');
+          }}
+          onReject={(data) => {
+            console.log('Ride rejected:', data);
+          }}
+          themeColors={themeColors}
+        />
       </div>
     </div>
   );
