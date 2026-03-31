@@ -41,6 +41,15 @@ const OptimizedTripMap = ({
     lng: Number(trip?.drop?.longitude || trip?.drop?.lng || 80.8893)
   }), [trip?.drop?.latitude, trip?.drop?.longitude, trip?.drop?.lat, trip?.drop?.lng]);
 
+  // Get car image URL
+  const carImageUrl = useMemo(() => {
+    if (trip?.carCategory?.image) {
+      const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+      return `${baseUrl}/uploads/${trip.carCategory.image}`;
+    }
+    return null;
+  }, [trip?.carCategory?.image]);
+
   const isOngoing = useMemo(() => 
     trip?.bookingStatus === 'Ongoing' || trip?.tripData?.startedAt,
     [trip?.bookingStatus, trip?.tripData?.startedAt]
@@ -51,20 +60,20 @@ const OptimizedTripMap = ({
   // Stable Throttled route update
   const updateRoute = useCallback(
     throttle(async (driverPos) => {
-      if (!mapInstanceRef.current || !window.google) return;
+      if (!mapInstanceRef.current || !window.google?.maps) return;
       const now = Date.now();
       if (now - lastRouteUpdateRef.current < 15000) return; // 15s throttle for directions
       lastRouteUpdateRef.current = now;
 
-      if (routeRendererRef.current) routeRendererRef.current.setMap(null);
-      routeRendererRef.current = new window.google.maps.DirectionsRenderer({
-        map: mapInstanceRef.current,
-        suppressMarkers: true,
-        polylineOptions: { strokeColor: '#2563EB', strokeOpacity: 0.8, strokeWeight: 6 }
-      });
-
-      const directionsService = new window.google.maps.DirectionsService();
       try {
+        if (routeRendererRef.current) routeRendererRef.current.setMap(null);
+        routeRendererRef.current = new window.google.maps.DirectionsRenderer({
+          map: mapInstanceRef.current,
+          suppressMarkers: true,
+          polylineOptions: { strokeColor: '#2563EB', strokeOpacity: 0.8, strokeWeight: 6 }
+        });
+
+        const directionsService = new window.google.maps.DirectionsService();
         const result = await new Promise((res, rej) => {
           directionsService.route({
             origin: driverPos,
@@ -86,6 +95,7 @@ const OptimizedTripMap = ({
           destination: isOngoing ? 'drop' : 'pickup'
         });
       } catch (e) {
+        console.warn('Directions API error, using fallback:', e);
         const dist = calculateDistance(driverPos.lat, driverPos.lng, destination.lat, destination.lng);
         setDistance(`${dist.toFixed(1)} km`);
         setDuration('~' + Math.round(dist * 3) + ' min');
@@ -94,29 +104,34 @@ const OptimizedTripMap = ({
     [destination, isOngoing]
   );
 
-  // Stable Throttled driver marker update
+  // Stable Throttled driver marker update - WITH CAR IMAGE
   const updateDriverMarker = useCallback(
     throttle((location) => {
-      if (!mapInstanceRef.current) return;
-      if (driverMarkerRef.current) {
-        driverMarkerRef.current.setPosition(location);
-      } else {
-        driverMarkerRef.current = new window.google.maps.Marker({
-          position: location,
-          map: mapInstanceRef.current,
-          icon: createCarMarker('#2563EB'),
-          zIndex: 1000
-        });
-      }
-      mapInstanceRef.current.panTo(location);
-      
-      const lastPos = lastPosRef.current;
-      if (!lastPos || calculateDistance(lastPos.lat, lastPos.lng, location.lat, location.lng) > 0.05) {
-        updateRoute(location);
-        lastPosRef.current = location;
+      if (!mapInstanceRef.current || !window.google?.maps) return;
+      try {
+        if (driverMarkerRef.current) {
+          driverMarkerRef.current.setPosition(location);
+        } else {
+          // Pass car image URL to createCarMarker
+          driverMarkerRef.current = new window.google.maps.Marker({
+            position: location,
+            map: mapInstanceRef.current,
+            icon: createCarMarker('#2563EB', carImageUrl),
+            zIndex: 1000
+          });
+        }
+        mapInstanceRef.current.panTo(location);
+        
+        const lastPos = lastPosRef.current;
+        if (!lastPos || calculateDistance(lastPos.lat, lastPos.lng, location.lat, location.lng) > 0.05) {
+          updateRoute(location);
+          lastPosRef.current = location;
+        }
+      } catch (e) {
+        console.warn('Marker update error:', e);
       }
     }, 4000),
-    [updateRoute]
+    [updateRoute, carImageUrl]
   );
 
   // Initialize map
@@ -139,35 +154,59 @@ const OptimizedTripMap = ({
       setMapLoaded(true);
     } catch (e) {
       console.error('Map init error:', e);
+      // Fallback: Show map without Google Maps features
+      if (mapRef.current) {
+        mapRef.current.innerHTML = `
+          <div style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border-radius: 1rem;">
+            <div style="text-align: center;">
+              <p style="font-size: 18px; font-weight: bold; margin-bottom: 10px;">📍 Map Unavailable</p>
+              <p style="font-size: 14px; opacity: 0.9;">Google Maps API not configured</p>
+              <p style="font-size: 12px; opacity: 0.7; margin-top: 10px;">Pickup: ${pickup.lat.toFixed(4)}, ${pickup.lng.toFixed(4)}</p>
+              <p style="font-size: 12px; opacity: 0.7;">Drop: ${drop.lat.toFixed(4)}, ${drop.lng.toFixed(4)}</p>
+            </div>
+          </div>
+        `;
+      }
+      setMapLoaded(true); // Still mark as loaded to show content
     }
   }, [pickup, drop]);
 
   // GPS tracking effect - Stable dependency
   useEffect(() => {
     if (!mapLoaded) return;
-    if (navigator.geolocation) {
-      watchIdRef.current = navigator.geolocation.watchPosition(
-        (position) => {
-          const location = { lat: position.coords.latitude, lng: position.coords.longitude };
-          setDriverLocation(location);
-          updateDriverMarker(location);
-        },
-        (error) => {
-          const now = Date.now();
-          if (now - lastErrorToastRef.current > 30000) { // Only show every 30s
-            toast.error('GPS Signal weak. Please check location permissions.');
-            lastErrorToastRef.current = now;
-          }
-        },
-        { enableHighAccuracy: true, timeout: 30000, maximumAge: 10000 }
-      );
+    if (!navigator.geolocation) {
+      console.warn('Geolocation not available');
+      return;
     }
-    return () => { if (watchIdRef.current) navigator.geolocation.clearWatch(watchIdRef.current); };
+    
+    watchIdRef.current = navigator.geolocation.watchPosition(
+      (position) => {
+        const location = { lat: position.coords.latitude, lng: position.coords.longitude };
+        setDriverLocation(location);
+        updateDriverMarker(location);
+      },
+      (error) => {
+        const now = Date.now();
+        if (now - lastErrorToastRef.current > 30000) { // Only show every 30s
+          console.warn('GPS Error:', error);
+          toast.error('GPS Signal weak. Please check location permissions.');
+          lastErrorToastRef.current = now;
+        }
+      },
+      { enableHighAccuracy: true, timeout: 30000, maximumAge: 10000 }
+    );
+    
+    return () => { 
+      if (watchIdRef.current) {
+        navigator.geolocation.clearWatch(watchIdRef.current);
+        watchIdRef.current = null;
+      }
+    };
   }, [mapLoaded, updateDriverMarker]);
 
   // Status badalte hi naya rasta dikhao (Accepted -> Ongoing) binna refresh ke
   useEffect(() => {
-    if (mapLoaded && driverLocation) {
+    if (mapLoaded && driverLocation && mapInstanceRef.current) {
       console.log('🔄 Trip Status changed! Switching route to:', isOngoing ? 'Drop' : 'Pickup');
       lastRouteUpdateRef.current = 0; // Throttle bypass karo takki turant update ho
       updateRoute(driverLocation);
@@ -177,8 +216,12 @@ const OptimizedTripMap = ({
 
   // Component Lifecycle
   useEffect(() => {
-    initMap();
+    const timer = setTimeout(() => {
+      initMap();
+    }, 100); // Small delay to ensure DOM is ready
+    
     return () => {
+      clearTimeout(timer);
       if (routeRendererRef.current) routeRendererRef.current.setMap(null);
       if (driverMarkerRef.current) driverMarkerRef.current.setMap(null);
       if (pickupMarkerRef.current) pickupMarkerRef.current.setMap(null);
@@ -192,25 +235,23 @@ const OptimizedTripMap = ({
       <div ref={mapRef} className={className} />
       
       {!mapLoaded && (
-        <div className="absolute inset-0 flex items-center justify-center bg-gray-100 rounded-2xl">
+        <div className="absolute inset-0 flex items-center justify-center bg-gray-100 rounded-2xl z-10">
           <div className="text-center">
             <div className="animate-spin h-8 w-8 border-4 border-blue-600 border-t-transparent rounded-full mx-auto mb-2" />
-            <p className="text-sm text-gray-600">Loading optimized map...</p>
+            <p className="text-sm text-gray-600">Loading map...</p>
           </div>
         </div>
       )}
 
       {/* Live tracking indicator */}
-      {driverLocation && (
-        <div className="absolute top-3 left-3 bg-white rounded-lg px-3 py-2 shadow-lg border">
+      {mapLoaded && driverLocation && (
+        <div className="absolute top-3 left-3 bg-white rounded-lg px-3 py-2 shadow-lg border z-20">
           <div className="flex items-center gap-2">
             <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
             <span className="text-xs font-medium text-gray-700">Live Tracking</span>
           </div>
         </div>
       )}
-
-
     </div>
   );
 };

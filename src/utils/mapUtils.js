@@ -21,17 +21,33 @@ export const loadGoogleMaps = () => {
     const script = document.createElement('script');
     const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
     
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=geometry&loading=async`;
+    if (!apiKey) {
+      console.warn('⚠️ VITE_GOOGLE_MAPS_API_KEY not configured');
+      reject(new Error('Google Maps API key not configured'));
+      return;
+    }
+    
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=geometry,places&loading=async`;
     script.async = true;
     script.defer = true;
+    script.type = 'text/javascript';
+    
+    const timeout = setTimeout(() => {
+      googleMapsPromise = null;
+      reject(new Error('Google Maps script load timeout'));
+    }, 10000);
     
     script.onload = () => {
+      clearTimeout(timeout);
       isGoogleMapsLoaded = true;
+      console.log('✅ Google Maps loaded successfully');
       resolve();
     };
     
-    script.onerror = () => {
+    script.onerror = (error) => {
+      clearTimeout(timeout);
       googleMapsPromise = null;
+      console.error('❌ Google Maps failed to load:', error);
       reject(new Error('Google Maps failed to load'));
     };
     
@@ -93,18 +109,31 @@ export const calculateDistance = (lat1, lng1, lat2, lng2) => {
   return R * c; // Distance in km
 };
 
-// Custom markers (SVG - faster than images)
-export const createCarMarker = (color = '#3B82F6') => ({
-  url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(`
-    <svg width="32" height="32" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
-      <circle cx="16" cy="16" r="14" fill="${color}" stroke="white" stroke-width="3"/>
-      <circle cx="16" cy="16" r="8" fill="white"/>
-      <polygon points="16,10 20,16 16,22 12,16" fill="${color}"/>
-    </svg>
-  `)}`,
-  scaledSize: new window.google.maps.Size(32, 32),
-  anchor: new window.google.maps.Point(16, 16)
-});
+// Custom markers - with car image support
+export const createCarMarker = (color = '#3B82F6', carImageUrl = null) => {
+  // Agar car image URL hai toh use karo
+  if (carImageUrl) {
+    return {
+      url: carImageUrl,
+      scaledSize: new window.google.maps.Size(48, 48),
+      anchor: new window.google.maps.Point(24, 24),
+      origin: new window.google.maps.Point(0, 0)
+    };
+  }
+  
+  // Fallback: SVG marker
+  return {
+    url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(`
+      <svg width="32" height="32" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="16" cy="16" r="14" fill="${color}" stroke="white" stroke-width="3"/>
+        <circle cx="16" cy="16" r="8" fill="white"/>
+        <polygon points="16,10 20,16 16,22 12,16" fill="${color}"/>
+      </svg>
+    `)}`,
+    scaledSize: new window.google.maps.Size(32, 32),
+    anchor: new window.google.maps.Point(16, 16)
+  };
+};
 
 export const createLocationMarker = (type = 'pickup') => {
   const color = type === 'pickup' ? '#10B981' : '#EF4444';

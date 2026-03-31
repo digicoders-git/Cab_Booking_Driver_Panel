@@ -150,17 +150,6 @@ export default function DriverTripDetail() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white border-b px-4 py-3 flex items-center justify-between sticky top-0 z-10">
-        <button onClick={() => navigate(-1)} className="p-2 hover:bg-gray-100 rounded-lg">
-          <FaArrowLeft className="text-gray-600" />
-        </button>
-        <h1 className="font-bold text-gray-900">Trip #{shortId}</h1>
-        <button onClick={fetchTrip} className="p-2 hover:bg-gray-100 rounded-lg">
-          <FaSync className="text-gray-600" />
-        </button>
-      </div>
-
       {/* Status Badge */}
       <div className="px-4 pt-4">
         <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold ${

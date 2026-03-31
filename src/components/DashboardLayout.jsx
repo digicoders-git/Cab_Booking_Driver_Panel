@@ -11,12 +11,15 @@ import { connectSocket, disconnectSocket, forceOnline, forceOffline, emitLocatio
 import { driverService } from "../api/driverApi";
 import { toast } from "sonner";
 import RideRequestModal from "./RideRequestModal";
+import NoCarAssignedModal from "./NoCarAssignedModal";
 
 const DashboardLayout = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isDriverOnline, setIsDriverOnline] = useState(false); // Online/Offline state
   const [rideRequest, setRideRequest] = useState(null);
   const [showRideModal, setShowRideModal] = useState(false);
+  const [showNoCarModal, setShowNoCarModal] = useState(false); // ✅ NEW
+  const [driverProfile, setDriverProfile] = useState(null); // ✅ NEW
   const { admin, logout } = useAuth();
   const { themeColors, toggleTheme, palette, changePalette } = useTheme();
   const { currentFont, corporateFonts, changeFont } = useFont();
@@ -34,6 +37,28 @@ const DashboardLayout = () => {
 
   const toggleSidebar = useCallback(() => setSidebarOpen((prev) => !prev), []);
   const closeSidebar = useCallback(() => setSidebarOpen(false), []);
+
+  // ✅ NEW: Fetch driver profile to check car assignment
+  useEffect(() => {
+    const fetchDriverProfile = async () => {
+      try {
+        const res = await driverService.getProfile();
+        setDriverProfile(res?.driver || res);
+        
+        // Check if car is assigned
+        const hasCarAssigned = res?.driver?.assignedCar || res?.assignedCar;
+        if (!hasCarAssigned) {
+          setShowNoCarModal(true);
+        }
+      } catch (err) {
+        console.error('Failed to fetch driver profile:', err);
+      }
+    };
+
+    if (admin?._id) {
+      fetchDriverProfile();
+    }
+  }, [admin?._id]);
 
   // Google Maps Geocoding
   const getAddressFromCoords = async (lat, lng) => {
@@ -124,7 +149,7 @@ const DashboardLayout = () => {
 
     const watchId = navigator.geolocation.watchPosition(
       async (position) => {
-        const { latitude, longitude } = position.coords;
+        const { latitude, longitude, heading } = position.coords;
         const now = Date.now();
 
         // Har 1 Second se pehle update mat karo
@@ -145,8 +170,8 @@ const DashboardLayout = () => {
         lastLng = longitude;
         lastUpdateTime = now;
 
-        // Socket se bhej Diya (Instant without HTTP)
-        emitLocation(driverId, latitude, longitude);
+        // Socket se bhej Diya (Instant without HTTP) - WITH HEADING
+        emitLocation(driverId, latitude, longitude, '', heading); // Async call, no await needed
 
         // Har 5 min mein address bhi update karo (HTTP se for persistence)
         if (now - lastAddressUpdateRef.current >= ADDRESS_UPDATE_INTERVAL) {
@@ -191,6 +216,13 @@ const DashboardLayout = () => {
     socket.on('new_ride_request', (data) => {
       console.log('🚗 new_ride_request received:', data);
       
+      // ✅ NEW: Check if driver has car assigned
+      if (!driverProfile?.assignedCar && !data?.assignedCar) {
+        setShowNoCarModal(true);
+        toast.error('🚗 Aapke paas gadi assign nahi hai');
+        return;
+      }
+      
       // Show modal instead of just toast
       setRideRequest(data);
       setShowRideModal(true);
@@ -228,7 +260,7 @@ const DashboardLayout = () => {
 
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-  }, [admin?._id]);
+  }, [admin?._id, driverProfile?.assignedCar]);
 
   const handleLogout = useCallback(async () => {
     const driverId = admin?._id || admin?.id;
@@ -242,6 +274,18 @@ const DashboardLayout = () => {
     logout();
     navigate("/login", { replace: true });
   }, [logout, navigate, admin]);
+
+  // ✅ NEW: Handle contact admin
+  const handleContactAdmin = () => {
+    toast.info('📞 Admin contact details: +91-XXXXXXXXXX');
+    setShowNoCarModal(false);
+  };
+
+  // ✅ NEW: Handle help
+  const handleHelp = () => {
+    navigate('/driver/support');
+    setShowNoCarModal(false);
+  };
 
   return (
     <div
@@ -295,6 +339,14 @@ const DashboardLayout = () => {
             console.log('Ride rejected:', data);
           }}
           themeColors={themeColors}
+        />
+
+        {/* ✅ NEW: No Car Assigned Modal */}
+        <NoCarAssignedModal
+          isOpen={showNoCarModal}
+          themeColors={themeColors}
+          onContactAdmin={handleContactAdmin}
+          onHelp={handleHelp}
         />
       </div>
     </div>
