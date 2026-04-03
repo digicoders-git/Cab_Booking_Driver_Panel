@@ -144,10 +144,14 @@ export default function DriverDashboard() {
         driverService.getMyTrips()
       ]);
 
-      setProfile(profileRes?.driver || profileRes || {});
+      const driverProfile = profileRes?.driver || profileRes || {};
+      setProfile(driverProfile);
       setWallet(walletRes?.wallet || walletRes || {});
       setPendingRequests(pendingRes?.requests || pendingRes || []);
       setTripHistory(tripsRes?.trips || tripsRes || []);
+
+      // Check if car is assigned
+      // (Check removed here as it's now handled globally in DashboardLayout)
 
       // Update auth context
       if (profileRes?.driver) {
@@ -159,7 +163,7 @@ export default function DriverDashboard() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, []);
+  }, []); // Dependence on navigate removed as we don't show the alert here anymore
 
   useEffect(() => {
     fetchDashboardData();

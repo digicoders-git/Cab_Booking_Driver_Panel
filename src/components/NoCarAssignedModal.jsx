@@ -13,78 +13,76 @@ const NoCarAssignedModal = ({ isOpen, themeColors, onContactAdmin, onHelp }) => 
         {/* Icon */}
         <div className="mb-6 flex justify-center">
           <div
-            className="w-20 h-20 rounded-full flex items-center justify-center"
-            style={{ backgroundColor: themeColors.danger + '20' }}
+            className="w-24 h-24 rounded-full flex items-center justify-center"
+            style={{ backgroundColor: '#FEE2E2' }}
           >
-            <FaCar size={40} style={{ color: themeColors.danger }} />
+            <FaCar size={48} style={{ color: '#EF4444' }} />
           </div>
         </div>
 
         {/* Title */}
         <h2
-          className="text-2xl font-bold mb-3"
-          style={{ color: themeColors.text }}
+          className="text-2xl font-bold mb-3 flex items-center justify-center gap-2"
+          style={{ color: '#111827' }}
         >
-          🚗 No Car Assigned
+          🏎️ No Car Assigned
         </h2>
 
         {/* Message */}
         <p
-          className="text-sm mb-6"
-          style={{ color: themeColors.textSecondary }}
+          className="text-base mb-8 px-2"
+          style={{ color: '#4B5563', lineHeight: '1.6' }}
         >
           Aapke paas abhi koi gadi assign nahi hai. Jab tak aapko gadi assign nahi hoti, aap koi ride nahi le sakte.
         </p>
 
         {/* Info Box */}
         <div
-          className="rounded-xl p-4 mb-6"
-          style={{ backgroundColor: themeColors.primary + '10' }}
+          className="rounded-2xl p-4 mb-8 flex items-center gap-3 text-left"
+          style={{ backgroundColor: '#F3F4F6' }}
         >
+          <div style={{ backgroundColor: '#3B82F6', color: 'white', minWidth: '24px', height: '24px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: 'bold' }}>i</div>
           <p
-            className="text-xs font-medium"
-            style={{ color: themeColors.primary }}
+            className="text-sm font-medium"
+            style={{ color: '#374151' }}
           >
-            ℹ️ Gadi assign karne ke liye admin se contact kijiye
+            Gadi assign karne ke liye admin se contact kijiye
           </p>
         </div>
 
         {/* Action Buttons */}
-        <div className="space-y-3">
+        <div className="space-y-4">
           {/* Contact Admin Button */}
           <button
             onClick={onContactAdmin}
-            className="w-full py-3 px-4 rounded-xl font-semibold text-white flex items-center justify-center gap-2 transition-all hover:shadow-lg"
+            className="w-full py-4 px-6 rounded-2xl font-bold text-white flex items-center justify-center gap-3 transition-all active:scale-95 shadow-md"
             style={{
-              backgroundColor: themeColors.primary,
-              color: themeColors.onPrimary
+              backgroundColor: '#1E3A5F',
             }}
           >
-            <FaPhone size={16} />
+            <FaPhone size={18} />
             Admin se Contact Karo
           </button>
 
           {/* Help Button */}
           <button
             onClick={onHelp}
-            className="w-full py-3 px-4 rounded-xl font-semibold transition-all hover:shadow-lg"
+            className="w-full py-4 px-6 rounded-2xl font-bold transition-all active:scale-95 border-2 flex items-center justify-center gap-3"
             style={{
-              backgroundColor: themeColors.background,
-              color: themeColors.primary,
-              border: `2px solid ${themeColors.primary}`
+              backgroundColor: 'white',
+              color: '#1E3A5F',
+              borderColor: '#1E3A5F'
             }}
           >
-            <div className="flex items-center justify-center gap-2">
-              <FaHeadset size={16} />
-              Help
-            </div>
+            <FaHeadset size={18} />
+            Help
           </button>
         </div>
 
         {/* Footer Message */}
         <p
-          className="text-xs mt-6"
-          style={{ color: themeColors.textSecondary }}
+          className="text-xs mt-8 font-medium"
+          style={{ color: '#9CA3AF' }}
         >
           Aapka profile complete hone ke baad admin aapko gadi assign karega
         </p>

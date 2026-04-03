@@ -45,9 +45,27 @@ const DashboardLayout = () => {
         const res = await driverService.getProfile();
         setDriverProfile(res?.driver || res);
         
-        // Check if car is assigned
-        const hasCarAssigned = res?.driver?.assignedCar || res?.assignedCar;
-        if (!hasCarAssigned) {
+        // Check if car is assigned - Sirf GADI ke fields check karo (Driver ID nahi!)
+        const driver = res?.driver || res;
+        const car = driver?.carDetails || driver?.vehicleDetails || null;
+        
+        const hasCarAssigned = 
+          driver?.carId || 
+          driver?.assignedCar || 
+          driver?.carNumber || 
+          driver?.carModel ||
+          car?.carNumber ||
+          car?.carModel ||
+          car?._id || // Car ki apni ID (Nested)
+          car?.vehicleNumber ||
+          car?.model ||
+          car?.vehicleModel;
+        
+        console.log('🚗 DashboardLayout - Final Car Check:', { hasCarAssigned, driver });
+
+        if (hasCarAssigned) {
+          setShowNoCarModal(false);
+        } else {
           setShowNoCarModal(true);
         }
       } catch (err) {
@@ -140,8 +158,8 @@ const DashboardLayout = () => {
 
     let lastLat = null;
     let lastLng = null;
-    const MIN_DISTANCE_METERS = 0; // Extreme Live (no threshold)
-    const LOCATION_INTERVAL = 0;   // Extreme Real-time (no throttle)
+    const MIN_DISTANCE_METERS = 2; // Only update if driver moves at least 2 meters
+    const LOCATION_INTERVAL = 3000; // Update every 3 seconds (3000ms)
     let lastUpdateTime = 0;
 
     // GPS loaction ko Wathch  kar rha ahi 
@@ -217,7 +235,8 @@ const DashboardLayout = () => {
       console.log('🚗 new_ride_request received:', data);
       
       // ✅ NEW: Check if driver has car assigned
-      if (!driverProfile?.assignedCar && !data?.assignedCar) {
+      const hasCar = driverProfile?.carId || driverProfile?.carDetails?._id || driverProfile?.carNumber || driverProfile?.assignedCar;
+      if (!hasCar) {
         setShowNoCarModal(true);
         toast.error('🚗 Aapke paas gadi assign nahi hai');
         return;
