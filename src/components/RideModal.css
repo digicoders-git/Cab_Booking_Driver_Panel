@@ -57,25 +57,143 @@
   animation: mapLoad 0.5s ease-out;
 }
 
-/* Mobile optimizations */
+/* Mobile optimizations - Phone Screen */
 @media (max-width: 640px) {
   .ride-modal {
-    margin: 1rem;
-    max-height: 90vh;
+    margin: 0;
+    max-height: 100vh;
     overflow-y: auto;
+    width: 100%;
+    border-radius: 1.5rem 1.5rem 0 0;
+    max-width: 100%;
   }
   
-  .map-container {
-    height: 250px !important;
+  /* Header Section */
+  .ride-modal > div:first-child {
+    padding: 1rem;
+    border-radius: 1.5rem 1.5rem 0 0;
+  }
+  
+  .ride-modal > div:first-child h2 {
+    font-size: 1.125rem;
+  }
+  
+  .ride-modal > div:first-child button {
+    padding: 0.5rem;
+  }
+  
+  /* Content Section */
+  .ride-modal > div:nth-child(2) {
+    padding: 1rem;
+    max-height: calc(100vh - 250px);
+    overflow-y: auto;
+    space-y: 1rem;
+  }
+  
+  /* Customer Info Card */
+  .ride-modal > div:nth-child(2) > div:first-child {
+    padding: 1rem;
+    margin-bottom: 1rem;
     border-radius: 1rem;
   }
   
+  .ride-modal > div:nth-child(2) > div:first-child p:first-child {
+    font-size: 1rem;
+  }
+  
+  .ride-modal > div:nth-child(2) > div:first-child p:nth-child(2) {
+    font-size: 0.875rem;
+  }
+  
+  .ride-modal > div:nth-child(2) > div:first-child a {
+    padding: 0.75rem;
+  }
+  
+  /* Location Cards */
+  .ride-modal > div:nth-child(2) > div > div {
+    padding: 0.75rem;
+    font-size: 0.875rem;
+  }
+  
+  .ride-modal > div:nth-child(2) > div > div p:first-child {
+    font-size: 0.75rem;
+  }
+  
+  .ride-modal > div:nth-child(2) > div > div p:nth-child(2) {
+    font-size: 0.875rem;
+    line-height: 1.4;
+  }
+  
+  /* Fare & Distance Grid */
+  .ride-modal > div:nth-child(2) > div:nth-child(4) {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem;
+  }
+  
+  .ride-modal > div:nth-child(2) > div:nth-child(4) > div {
+    padding: 0.75rem;
+    border-radius: 0.75rem;
+  }
+  
+  .ride-modal > div:nth-child(2) > div:nth-child(4) > div p:first-child {
+    font-size: 0.75rem;
+  }
+  
+  .ride-modal > div:nth-child(2) > div:nth-child(4) > div p:nth-child(3) {
+    font-size: 1.125rem;
+    margin-top: 0.5rem;
+  }
+  
+  /* Action Buttons - Sticky at Bottom */
   .action-buttons {
     position: sticky;
     bottom: 0;
     background: white;
     padding: 1rem;
     border-top: 1px solid #e5e7eb;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem;
+    z-index: 10;
+    margin: 1rem -1rem -1rem -1rem;
+  }
+  
+  .action-buttons button {
+    padding: 1rem 0.75rem !important;
+    font-size: 0.875rem;
+    border-radius: 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    font-weight: 600;
+  }
+  
+  .action-buttons button span:last-child {
+    display: inline;
+  }
+  
+  .action-buttons button svg {
+    font-size: 1.25rem;
+  }
+  
+  .map-container {
+    height: 250px !important;
+    border-radius: 1rem;
+  }
+}
+
+/* Tablet optimizations */
+@media (min-width: 641px) and (max-width: 1024px) {
+  .ride-modal {
+    max-width: 90%;
+  }
+  
+  .action-buttons {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
   }
 }
 

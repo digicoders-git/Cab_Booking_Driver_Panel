@@ -38,34 +38,74 @@ export const connectSocket = (driverId) => {
   return socket;
 };
 
-// Get device heading (orientation)
+// Get device heading (orientation) - WITH TIMEOUT
 const getDeviceHeading = () => {
   return new Promise((resolve) => {
+    let resolved = false;
+    
+    // ✅ TIMEOUT: 2 seconds
+    const timeout = setTimeout(() => {
+      if (!resolved) {
+        resolved = true;
+        console.warn('⏱️ Device orientation timeout - using lastHeading');
+        resolve(lastHeading || 0); // ✅ Default to 0, not null
+      }
+    }, 2000);
+
     // Check if DeviceOrientationEvent is available
     if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
       // iOS 13+ requires permission
       DeviceOrientationEvent.requestPermission()
         .then(permissionState => {
           if (permissionState === 'granted') {
-            window.addEventListener('deviceorientation', (event) => {
-              const heading = event.alpha; // 0-360 degrees
-              lastHeading = heading;
-              resolve(heading);
-            }, { once: true });
+            const handler = (event) => {
+              if (!resolved) {
+                resolved = true;
+                clearTimeout(timeout);
+                const heading = event.alpha; // 0-360 degrees
+                lastHeading = heading;
+                console.log('📍 Device heading obtained:', heading);
+                resolve(heading);
+              }
+            };
+            window.addEventListener('deviceorientation', handler, { once: true });
           } else {
-            resolve(lastHeading || null);
+            if (!resolved) {
+              resolved = true;
+              clearTimeout(timeout);
+              console.warn('⚠️ Device orientation permission denied');
+              resolve(lastHeading || 0); // ✅ Default to 0
+            }
           }
         })
-        .catch(() => resolve(lastHeading || null));
+        .catch((err) => {
+          if (!resolved) {
+            resolved = true;
+            clearTimeout(timeout);
+            console.warn('⚠️ Device orientation permission error:', err);
+            resolve(lastHeading || 0); // ✅ Default to 0
+          }
+        });
     } else if (typeof DeviceOrientationEvent !== 'undefined') {
       // Android and older iOS
-      window.addEventListener('deviceorientation', (event) => {
-        const heading = event.alpha; // 0-360 degrees
-        lastHeading = heading;
-        resolve(heading);
-      }, { once: true });
+      const handler = (event) => {
+        if (!resolved) {
+          resolved = true;
+          clearTimeout(timeout);
+          const heading = event.alpha; // 0-360 degrees
+          lastHeading = heading;
+          console.log('📍 Device heading obtained:', heading);
+          resolve(heading);
+        }
+      };
+      window.addEventListener('deviceorientation', handler, { once: true });
     } else {
-      resolve(lastHeading || null);
+      if (!resolved) {
+        resolved = true;
+        clearTimeout(timeout);
+        console.warn('⚠️ DeviceOrientationEvent not available');
+        resolve(lastHeading || 0); // ✅ Default to 0
+      }
     }
   });
 };
@@ -92,18 +132,21 @@ export const emitLocation = async (driverId, latitude, longitude, address = '', 
       let finalHeading = gpsHeading;
       
       if (finalHeading === null) {
-        finalHeading = await getDeviceHeading();
+        finalHeading = await getDeviceHeading(); // ✅ Now has timeout
       }
+
+      // ✅ GUARANTEE: heading kabhi null nahi hoga
+      const headingValue = finalHeading !== null && finalHeading !== undefined ? finalHeading : (lastHeading || 0);
 
       socket.emit('update_location', { 
         driverId, 
         latitude, 
         longitude, 
         address,
-        heading: finalHeading || lastHeading || 0 // Default to 0 instead of null to avoid UI issues
+        heading: headingValue // ✅ Always has value (0 minimum)
       });
       
-      console.log('📍 Location emitted:', { latitude, longitude, heading: finalHeading });
+      console.log('📍 Location emitted:', { latitude, longitude, heading: headingValue });
     } catch (e) {
       console.warn('Error getting heading:', e);
       socket.emit('update_location', { 
@@ -111,7 +154,7 @@ export const emitLocation = async (driverId, latitude, longitude, address = '', 
         latitude, 
         longitude, 
         address,
-        heading: lastHeading || 0
+        heading: lastHeading || 0 // ✅ Always has value
       });
     }
   }

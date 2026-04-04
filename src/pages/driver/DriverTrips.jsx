@@ -115,11 +115,11 @@ export default function DriverTrips() {
         {/* Filters */}
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4 mb-6">
           <div className="flex flex-col sm:flex-row gap-4">
-            <div className="flex items-center gap-1 p-1 bg-gray-100 rounded-lg">
+            <div className="flex items-center gap-1 p-1 bg-gray-100 rounded-lg overflow-x-auto">
               {['all', 'completed', 'ongoing', 'cancelled'].map(t => (
                 <button key={t} onClick={() => { setFilter(t); setCurrentPage(1); }}
-                  className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${filter === t ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-600'}`}>
-                  {t.charAt(0).toUpperCase() + t.slice(1)}
+                  className={`px-2 sm:px-4 py-1.5 rounded-md text-xs sm:text-sm font-medium transition-all whitespace-nowrap ${filter === t ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-600'}`}>
+                  {t === 'all' ? 'All' : t === 'completed' ? 'Done' : t === 'ongoing' ? 'Active' : 'Cancel'}
                 </button>
               ))}
             </div>

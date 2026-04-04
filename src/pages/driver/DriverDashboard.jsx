@@ -12,7 +12,7 @@ import HC_accessibility from 'highcharts/modules/accessibility';
 const initHC = (mod) => {
   if (mod) {
     const init = typeof mod === 'function' ? mod : mod.default;
-    if (typeof init === 'function') { try { init(Highcharts); } catch (e) {} }
+    if (typeof init === 'function') { try { init(Highcharts); } catch (e) { } }
   }
 };
 initHC(HC_more); initHC(HC_solidGauge); initHC(HC_accessibility);
@@ -83,7 +83,7 @@ export default function DriverDashboard() {
       console.log('\n🔄 ========== FETCH DASHBOARD DATA START ==========');
       console.log('⏰ Time:', new Date().toLocaleTimeString());
       setRefreshing(true);
-      
+
       console.log('📡 Making API calls...');
       const [profileRes, walletRes, pendingRes, tripsRes, notifRes] = await Promise.all([
         driverService.getProfile(),
@@ -92,14 +92,14 @@ export default function DriverDashboard() {
         driverService.getMyTrips(),
         driverService.getNotifications()
       ]);
-      
+
       console.log('✅ API Responses received:');
       console.log('  👤 Profile:', profileRes);
       console.log('  💰 Wallet:', walletRes);
       console.log('  🚗 Pending Requests:', pendingRes);
       console.log('  📋 Trips:', tripsRes);
       console.log('  🔔 Notifications:', notifRes);
-      
+
       setProfile(profileRes?.driver || profileRes || {});
       setWallet(walletRes?.wallet || walletRes || {});
 
@@ -109,7 +109,7 @@ export default function DriverDashboard() {
       console.log('📊 Total Pending Requests:', newRequests.length);
       console.log('📝 Request IDs:', newRequests.map(r => r._id));
       console.log('🔍 Previous Request IDs:', prevRequestIdsRef.current ? Array.from(prevRequestIdsRef.current) : 'NULL (First Load)');
-      
+
       setPendingRequests(newRequests);
 
       // Pehli baar load ho raha hai (prevRequestIdsRef null hai)
@@ -117,7 +117,7 @@ export default function DriverDashboard() {
         console.log('\n🆕 FIRST LOAD DETECTED');
         prevRequestIdsRef.current = new Set(newRequests.map(r => r._id));
         console.log('✅ Initialized prevRequestIdsRef with:', Array.from(prevRequestIdsRef.current));
-        
+
         // Agar koi pending request hai toh modal dikha do
         if (newRequests.length > 0) {
           console.log('\n🚨 SHOWING MODAL FOR FIRST REQUEST');
@@ -125,7 +125,7 @@ export default function DriverDashboard() {
           console.log('👤 Passenger:', newRequests[0].booking?.passengerDetails?.name);
           console.log('📍 Pickup:', newRequests[0].booking?.pickup?.address?.split(',')[0]);
           console.log('💰 Fare:', newRequests[0].booking?.fareEstimate);
-          
+
           setCurrentRideRequest(newRequests[0]);
           setShowRideModal(true);
           console.log('✅ Modal state updated: showRideModal = true');
@@ -136,7 +136,7 @@ export default function DriverDashboard() {
         // Subsequent loads - check for new requests
         console.log('\n🔄 SUBSEQUENT LOAD - Checking for new requests');
         let foundNewRequest = false;
-        
+
         newRequests.forEach((req) => {
           if (!prevRequestIdsRef.current.has(req._id)) {
             console.log('\n🆕 NEW REQUEST DETECTED!');
@@ -145,7 +145,7 @@ export default function DriverDashboard() {
             console.log('👤 Passenger:', req.booking?.passengerDetails?.name);
             console.log('📍 Pickup:', req.booking?.pickup?.address?.split(',')[0]);
             console.log('💰 Fare:', req.booking?.fareEstimate);
-            
+
             setCurrentRideRequest(req);
             setShowRideModal(true);
             prevRequestIdsRef.current.add(req._id);
@@ -153,17 +153,17 @@ export default function DriverDashboard() {
             console.log('✅ Modal state updated: showRideModal = true');
           }
         });
-        
+
         if (!foundNewRequest) {
           console.log('ℹ️ No new requests found');
         }
       }
-      
+
       console.log('\n📊 Final prevRequestIdsRef:', Array.from(prevRequestIdsRef.current));
 
       setTripHistory(tripsRes?.trips || tripsRes || []);
       setNotifications(notifRes?.notifications || notifRes || []);
-      
+
       console.log('\n✅ ========== FETCH DASHBOARD DATA COMPLETE ==========\n');
     } catch (err) {
       console.error('\n❌ ========== FETCH DASHBOARD DATA ERROR ==========');
@@ -182,7 +182,7 @@ export default function DriverDashboard() {
     console.log('\n🚀 ========== COMPONENT MOUNTED ==========');
     console.log('⏰ Mount Time:', new Date().toLocaleTimeString());
     console.log('👤 Driver ID:', driver?._id || driver?.id);
-    
+
     fetchDashboardData();
 
     // Polling — har 10 sec mein pending requests check karo
@@ -191,12 +191,12 @@ export default function DriverDashboard() {
       console.log('\n🔄 ========== POLLING TICK ==========');
       console.log('⏰ Poll Time:', new Date().toLocaleTimeString());
       console.log('📡 Fetching pending requests...');
-      
+
       driverService.getPendingRequests().then((pendingRes) => {
         console.log('✅ Polling API Response:', pendingRes);
         const newRequests = pendingRes?.requests || pendingRes || [];
         console.log('📊 Pending Requests Count:', newRequests.length);
-        
+
         if (prevRequestIdsRef.current !== null) {
           let foundNew = false;
           newRequests.forEach((req) => {
@@ -207,7 +207,7 @@ export default function DriverDashboard() {
               console.log('👤 Passenger:', req.booking?.passengerDetails?.name);
               console.log('📍 Pickup:', req.booking?.pickup?.address?.split(',')[0]);
               console.log('💰 Fare:', req.booking?.fareEstimate);
-              
+
               setCurrentRideRequest(req);
               setShowRideModal(true);
               prevRequestIdsRef.current.add(req._id);
@@ -215,7 +215,7 @@ export default function DriverDashboard() {
               console.log('✅ Modal triggered from polling');
             }
           });
-          
+
           if (!foundNew) {
             console.log('ℹ️ No new requests in this poll');
           }
@@ -231,14 +231,14 @@ export default function DriverDashboard() {
     console.log('🔌 Attaching socket listeners...');
     const attachSocketListeners = () => {
       const socket = getSocket();
-      if (!socket) { 
+      if (!socket) {
         console.log('⚠️ Socket not ready, retrying in 1 second...');
-        setTimeout(attachSocketListeners, 1000); 
-        return; 
+        setTimeout(attachSocketListeners, 1000);
+        return;
       }
-      
+
       console.log('✅ Socket connected, attaching event listeners');
-      
+
       socket.on('new_ride_request', (data) => {
         console.log('\n🔔 ========== SOCKET EVENT: new_ride_request ==========');
         console.log('⏰ Event Time:', new Date().toLocaleTimeString());
@@ -247,7 +247,7 @@ export default function DriverDashboard() {
         fetchDashboardData();
         console.log('========================================\n');
       });
-      
+
       socket.on('ride_status_update', (data) => {
         console.log('\n🔔 ========== SOCKET EVENT: ride_status_update ==========');
         console.log('⏰ Event Time:', new Date().toLocaleTimeString());
@@ -263,7 +263,7 @@ export default function DriverDashboard() {
       console.log('\n🛑 ========== COMPONENT UNMOUNTING ==========');
       console.log('⏰ Unmount Time:', new Date().toLocaleTimeString());
       console.log('🧹 Cleaning up polling interval and socket listeners');
-      
+
       clearInterval(pollInterval);
       const socket = getSocket();
       if (socket) {
@@ -280,23 +280,23 @@ export default function DriverDashboard() {
       console.log('\n✅ ========== ACCEPT RIDE ==========');
       console.log('🆔 Request ID:', requestId);
       console.log('⏰ Time:', new Date().toLocaleTimeString());
-      
+
       setShowRideModal(false);
       console.log('🔒 Modal closed');
-      
+
       console.log('📡 Calling API: respondToRequest(accept)...');
       const res = await driverService.respondToRequest(requestId, 'accept');
       console.log('✅ API Response:', res);
-      
+
       if (res.success) {
         const otp = res.booking?.tripData?.startOtp;
         console.log('🎉 Ride Accepted Successfully!');
         console.log('🔑 OTP:', otp);
         console.log('🆔 Booking ID:', res.booking?._id);
-        
+
         toast.success(`✅ Ride Accepted! ${otp ? `OTP: ${otp}` : ''}`, { duration: 6000 });
         fetchDashboardData();
-        
+
         if (res.booking?._id) {
           const shortId = res.booking._id.slice(-8);
           console.log('🚀 Navigating to trip detail page...');
@@ -319,18 +319,18 @@ export default function DriverDashboard() {
       console.log('\n❌ ========== REJECT RIDE ==========');
       console.log('🆔 Request ID:', requestId);
       console.log('⏰ Time:', new Date().toLocaleTimeString());
-      
+
       setShowRideModal(false);
       console.log('🔒 Modal closed');
-      
+
       console.log('📡 Calling API: respondToRequest(reject)...');
       const res = await driverService.respondToRequest(requestId, 'reject');
       console.log('✅ API Response:', res);
-      
-      if (res.success) { 
+
+      if (res.success) {
         console.log('✅ Ride Rejected Successfully!');
-        toast.info('❌ Ride Rejected'); 
-        fetchDashboardData(); 
+        toast.info('❌ Ride Rejected');
+        fetchDashboardData();
       }
       console.log('========================================\n');
     } catch (err) {
@@ -352,11 +352,11 @@ export default function DriverDashboard() {
     if (!otp) return;
     try {
       const res = await driverService.startTrip(bookingId, otp);
-      if (res.success) { 
-        toast.success('Trip started!'); 
-        fetchDashboardData(); 
+      if (res.success) {
+        toast.success('Trip started!');
+        fetchDashboardData();
         const shortId = bookingId.slice(-8);
-        navigate(`/driver/trip/${shortId}`); 
+        navigate(`/driver/trip/${shortId}`);
       }
     } catch (err) {
       toast.error(err?.response?.data?.message || 'Invalid OTP');
@@ -471,7 +471,7 @@ export default function DriverDashboard() {
     <>
       {/* Ride Request Modal */}
       {showRideModal && currentRideRequest && (
-        <div 
+        <div
           className="fixed inset-0 z-50 flex items-center justify-center p-4"
           style={{
             backgroundColor: 'rgba(0, 0, 0, 0.75)',
@@ -487,7 +487,7 @@ export default function DriverDashboard() {
                 <div className="absolute top-0 left-0 w-32 h-32 bg-white rounded-full -translate-x-16 -translate-y-16"></div>
                 <div className="absolute bottom-0 right-0 w-40 h-40 bg-white rounded-full translate-x-20 translate-y-20"></div>
               </div>
-              
+
               <div className="relative flex items-center gap-4">
                 <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center shadow-lg transform hover:scale-110 transition-transform">
                   <FaCar className="text-blue-600 text-2xl" />
@@ -588,179 +588,179 @@ export default function DriverDashboard() {
 
       <div className="space-y-6 py-6 px-4 sm:px-6 bg-gray-50 min-h-screen">
 
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div className="flex items-center gap-4">
-          <div className="w-14 h-14 rounded-full bg-gradient-to-r from-blue-600 to-purple-600 flex items-center justify-center text-white font-bold text-xl">
-            {profile?.name?.charAt(0) || 'D'}
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Welcome, {profile?.name || 'Driver'}!</h1>
-            <div className="flex items-center gap-3 mt-1">
-              <span className="flex items-center gap-1 text-sm"><FaStar className="text-yellow-400" size={14} /> {profile?.rating || 0} ★</span>
-              <div className="w-px h-3 bg-gray-300" />
-              <span className="text-sm text-gray-500">{profile?.carModel || profile?.carDetails?.carModel || 'Car not assigned'}</span>
-              <div className="w-px h-3 bg-gray-300" />
-              {/* Online Status Badge */}
-              <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${profile?.isOnline ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                {profile?.isOnline ? '🟢 Online' : '🔴 Offline'}
-              </span>
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <div className="w-14 h-14 rounded-full bg-gradient-to-r from-blue-600 to-purple-600 flex items-center justify-center text-white font-bold text-xl">
+              {profile?.name?.charAt(0) || 'D'}
+            </div>
+            <div>
+              <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Welcome, {profile?.name || 'Driver'}</h1>
+              <div className="flex items-center gap-3 mt-1">
+                <span className="flex items-center gap-1 text-sm"><FaStar className="text-yellow-400" size={14} /> {profile?.rating || 0} ★</span>
+                <div className="w-px h-3 bg-gray-300" />
+                <span className="text-sm text-gray-500">{profile?.carModel || profile?.carDetails?.carModel || 'Car not assigned'}</span>
+                <div className="w-px h-3 bg-gray-300" />
+                {/* Online Status Badge */}
+                <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${profile?.isOnline ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                  {profile?.isOnline ? '🟢 Online' : '🔴 Offline'}
+                </span>
+              </div>
             </div>
           </div>
-        </div>
-        <div className="flex items-center gap-3">
-          <button onClick={() => navigate('/driver/notifications')} className="relative p-2 rounded-lg border border-gray-300 hover:bg-gray-50 transition-all">
-            <FaBell size={18} className="text-gray-600" />
-            {stats.unreadCount > 0 && (
-              <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-[10px] rounded-full flex items-center justify-center">{stats.unreadCount}</span>
-            )}
-          </button>
-          <button onClick={fetchDashboardData} disabled={refreshing} className="p-2 rounded-lg border border-gray-300 hover:bg-gray-50 transition-all">
-            <FaSync className={refreshing ? 'animate-spin' : ''} />
-          </button>
-        </div>
-      </div>
-
-      {/* Stats Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-4">
-        <StatCard label="Total Trips" value={stats.totalTrips} icon={FaRoute} color={CHART_COLORS.primary} trend={12} />
-        <StatCard label="Completed" value={stats.completedTrips} icon={FaCheckCircle} color={CHART_COLORS.success} trend={8} />
-        <StatCard label="Success Rate" value={`${stats.successRate.toFixed(1)}%`} icon={Target} color={stats.successRate >= 70 ? CHART_COLORS.success : CHART_COLORS.warning} />
-        <StatCard label="Total Earnings" value={`₹${stats.totalEarnings.toLocaleString()}`} icon={DollarSign} color={CHART_COLORS.success} trend={15} />
-        <StatCard label="Wallet Balance" value={`₹${stats.walletBalance.toLocaleString()}`} icon={FaWallet} color={stats.walletBalance > 0 ? CHART_COLORS.success : CHART_COLORS.warning} />
-        <StatCard label="Rating" value={`${stats.avgRating.toFixed(1)}★`} icon={FaStar} color={CHART_COLORS.orange} />
-      </div>
-
-      {/* Chart Selector */}
-      <div className="flex flex-wrap gap-2">
-        {['all', 'status', 'earnings', 'performance', 'trends'].map((type) => (
-          <button key={type} onClick={() => setSelectedChart(type)}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${selectedChart === type ? 'bg-blue-600 text-white shadow-lg' : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'}`}>
-            {type.charAt(0).toUpperCase() + type.slice(1)} Charts
-          </button>
-        ))}
-      </div>
-
-      {/* Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-        {(selectedChart === 'all' || selectedChart === 'status') && (
-          <ChartCard title="Trip Status" icon={PieChart} subtitle="Distribution by status">
-            {tripStatusData.length > 0 ? <HighchartsReact highcharts={Highcharts} options={pieOptions(tripStatusData, 'Trips')} /> : <div className="h-[200px] flex items-center justify-center text-gray-400">No data</div>}
-          </ChartCard>
-        )}
-        {(selectedChart === 'all' || selectedChart === 'performance') && (
-          <ChartCard title="Driver Rating" icon={Gauge} subtitle="Current rating out of 5">
-            <HighchartsReact highcharts={Highcharts} options={ratingGaugeOptions} />
-          </ChartCard>
-        )}
-        {(selectedChart === 'all' || selectedChart === 'trends') && monthlyData.length > 0 && (
-          <ChartCard title="Monthly Earnings" icon={BarChart3} subtitle="Earnings by month">
-            <HighchartsReact highcharts={Highcharts} options={barOptions} />
-          </ChartCard>
-        )}
-        {(selectedChart === 'all' || selectedChart === 'trends') && (
-          <ChartCard title="Daily Trips" icon={LineChart} subtitle="Trips per day">
-            <HighchartsReact highcharts={Highcharts} options={lineOptions} />
-          </ChartCard>
-        )}
-      </div>
-
-      {/* Pending Ride Requests */}
-      {pendingRequests.length > 0 && (
-        <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-          <div className="px-6 py-4 border-b bg-gradient-to-r from-blue-50 to-indigo-50 flex items-center gap-2">
-            <FaClock className="text-blue-600" />
-            <h3 className="text-sm font-semibold text-gray-900">Pending Ride Requests ({pendingRequests.length})</h3>
+          <div className="flex items-center gap-3">
+            <button onClick={() => navigate('/driver/notifications')} className="relative p-2 rounded-lg border border-gray-300 hover:bg-gray-50 transition-all">
+              <FaBell size={18} className="text-gray-600" />
+              {stats.unreadCount > 0 && (
+                <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-[10px] rounded-full flex items-center justify-center">{stats.unreadCount}</span>
+              )}
+            </button>
+            <button onClick={fetchDashboardData} disabled={refreshing} className="p-2 rounded-lg border border-gray-300 hover:bg-gray-50 transition-all">
+              <FaSync className={refreshing ? 'animate-spin' : ''} />
+            </button>
           </div>
-          <div className="divide-y divide-gray-200">
-            {pendingRequests.map((req, idx) => {
-              const booking = req.booking || req;
-              const passenger = booking.passengerDetails || {};
-              const pickup = booking.pickup || {};
-              const drop = booking.drop || {};
-              return (
-                <div key={req._id || idx} className="p-6 hover:bg-gray-50 transition-colors">
-                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                    <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
-                        <FaUser className="text-blue-600" size={20} />
+        </div>
+
+        {/* Stats Cards */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-4">
+          <StatCard label="Total Trips" value={stats.totalTrips} icon={FaRoute} color={CHART_COLORS.primary} trend={12} />
+          <StatCard label="Completed" value={stats.completedTrips} icon={FaCheckCircle} color={CHART_COLORS.success} trend={8} />
+          <StatCard label="Success Rate" value={`${stats.successRate.toFixed(1)}%`} icon={Target} color={stats.successRate >= 70 ? CHART_COLORS.success : CHART_COLORS.warning} />
+          <StatCard label="Total Earnings" value={`₹${stats.totalEarnings.toLocaleString()}`} icon={DollarSign} color={CHART_COLORS.success} trend={15} />
+          <StatCard label="Wallet Balance" value={`₹${stats.walletBalance.toLocaleString()}`} icon={FaWallet} color={stats.walletBalance > 0 ? CHART_COLORS.success : CHART_COLORS.warning} />
+          <StatCard label="Rating" value={`${stats.avgRating.toFixed(1)}★`} icon={FaStar} color={CHART_COLORS.orange} />
+        </div>
+
+        {/* Chart Selector */}
+        <div className="flex flex-wrap gap-2">
+          {['all', 'status', 'earnings', 'performance', 'trends'].map((type) => (
+            <button key={type} onClick={() => setSelectedChart(type)}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${selectedChart === type ? 'bg-blue-600 text-white shadow-lg' : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'}`}>
+              {type.charAt(0).toUpperCase() + type.slice(1)} Charts
+            </button>
+          ))}
+        </div>
+
+        {/* Charts */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+          {(selectedChart === 'all' || selectedChart === 'status') && (
+            <ChartCard title="Trip Status" icon={PieChart} subtitle="Distribution by status">
+              {tripStatusData.length > 0 ? <HighchartsReact highcharts={Highcharts} options={pieOptions(tripStatusData, 'Trips')} /> : <div className="h-[200px] flex items-center justify-center text-gray-400">No data</div>}
+            </ChartCard>
+          )}
+          {(selectedChart === 'all' || selectedChart === 'performance') && (
+            <ChartCard title="Driver Rating" icon={Gauge} subtitle="Current rating out of 5">
+              <HighchartsReact highcharts={Highcharts} options={ratingGaugeOptions} />
+            </ChartCard>
+          )}
+          {(selectedChart === 'all' || selectedChart === 'trends') && monthlyData.length > 0 && (
+            <ChartCard title="Monthly Earnings" icon={BarChart3} subtitle="Earnings by month">
+              <HighchartsReact highcharts={Highcharts} options={barOptions} />
+            </ChartCard>
+          )}
+          {(selectedChart === 'all' || selectedChart === 'trends') && (
+            <ChartCard title="Daily Trips" icon={LineChart} subtitle="Trips per day">
+              <HighchartsReact highcharts={Highcharts} options={lineOptions} />
+            </ChartCard>
+          )}
+        </div>
+
+        {/* Pending Ride Requests */}
+        {pendingRequests.length > 0 && (
+          <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+            <div className="px-6 py-4 border-b bg-gradient-to-r from-blue-50 to-indigo-50 flex items-center gap-2">
+              <FaClock className="text-blue-600" />
+              <h3 className="text-sm font-semibold text-gray-900">Pending Ride Requests ({pendingRequests.length})</h3>
+            </div>
+            <div className="divide-y divide-gray-200">
+              {pendingRequests.map((req, idx) => {
+                const booking = req.booking || req;
+                const passenger = booking.passengerDetails || {};
+                const pickup = booking.pickup || {};
+                const drop = booking.drop || {};
+                return (
+                  <div key={req._id || idx} className="p-6 hover:bg-gray-50 transition-colors">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                      <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+                          <FaUser className="text-blue-600" size={20} />
+                        </div>
+                        <div>
+                          <p className="font-semibold text-gray-900">{passenger.name || 'Passenger'}</p>
+                          <p className="text-sm text-gray-500">{passenger.phone || '—'}</p>
+                          <div className="flex items-center gap-2 mt-1 text-xs text-gray-400">
+                            <Navigation size={12} /> {pickup.address?.split(',')[0]}
+                            <span>→</span>
+                            <MapPin size={12} /> {drop.address?.split(',')[0]}
+                          </div>
+                        </div>
                       </div>
-                      <div>
-                        <p className="font-semibold text-gray-900">{passenger.name || 'Passenger'}</p>
-                        <p className="text-sm text-gray-500">{passenger.phone || '—'}</p>
-                        <div className="flex items-center gap-2 mt-1 text-xs text-gray-400">
-                          <Navigation size={12} /> {pickup.address?.split(',')[0]}
-                          <span>→</span>
-                          <MapPin size={12} /> {drop.address?.split(',')[0]}
+                      <div className="flex items-center gap-3">
+                        <div className="text-right">
+                          <p className="text-lg font-bold text-green-600">₹{booking.fareEstimate || 0}</p>
+                          <p className="text-xs text-gray-500">{booking.rideType || 'Ride'} • {booking.estimatedDistanceKm || 0} km</p>
+                        </div>
+                        <div className="flex gap-2">
+                          <button onClick={() => handleAcceptRide(req._id)} className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm font-medium">Accept</button>
+                          <button onClick={() => handleRejectRide(req._id)} className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 text-sm font-medium">Reject</button>
                         </div>
                       </div>
                     </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Recent Trips */}
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+          <div className="px-6 py-4 border-b bg-gray-50 flex items-center justify-between">
+            <div className="flex items-center gap-2"><FaHistory className="text-blue-600" /><h3 className="text-sm font-semibold text-gray-900">Recent Trips</h3></div>
+            <button onClick={() => navigate('/driver/trips')} className="text-xs text-blue-600 hover:text-blue-700 font-medium">View All →</button>
+          </div>
+          <div className="divide-y divide-gray-200">
+            {tripHistory.slice(0, 5).map((trip, idx) => {
+              const tripStatus = (trip.status || trip.bookingStatus)?.toLowerCase();
+              return (
+                <div key={idx} className="p-5 hover:bg-gray-50 transition-colors">
+                  <div className="flex items-center justify-between flex-wrap gap-4">
+                    <div className="flex items-center gap-4">
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center ${tripStatus === 'completed' ? 'bg-green-100' : tripStatus === 'ongoing' ? 'bg-blue-100' : tripStatus === 'cancelled' ? 'bg-red-100' : 'bg-gray-100'}`}>
+                        {tripStatus === 'completed' ? <FaCheckCircle className="text-green-600" /> : tripStatus === 'cancelled' ? <FaBan className="text-red-600" /> : <FaRoute className="text-gray-600" />}
+                      </div>
+                      <div>
+                        <p className="font-medium text-gray-900">Trip #{trip._id?.slice(-8)}</p>
+                        <p className="text-xs text-gray-500">{new Date(trip.createdAt).toLocaleDateString()} • {trip.pickup?.address?.split(',')[0]} → {trip.drop?.address?.split(',')[0]}</p>
+                      </div>
+                    </div>
                     <div className="flex items-center gap-3">
-                      <div className="text-right">
-                        <p className="text-lg font-bold text-green-600">₹{booking.fareEstimate || 0}</p>
-                        <p className="text-xs text-gray-500">{booking.rideType || 'Ride'} • {booking.estimatedDistanceKm || 0} km</p>
-                      </div>
-                      <div className="flex gap-2">
-                        <button onClick={() => handleAcceptRide(req._id)} className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm font-medium">Accept</button>
-                        <button onClick={() => handleRejectRide(req._id)} className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 text-sm font-medium">Reject</button>
-                      </div>
+                      <p className="text-lg font-bold text-green-600">₹{trip.actualFare || trip.fareEstimate || 0}</p>
+                      {tripStatus === 'ongoing' && (
+                        <button onClick={() => handleStartTrip(trip._id)} className="px-3 py-1.5 bg-blue-600 text-white rounded-lg text-sm">Start Trip</button>
+                      )}
                     </div>
                   </div>
                 </div>
               );
             })}
+            {tripHistory.length === 0 && (
+              <div className="py-12 text-center text-gray-400">
+                <FaCar className="mx-auto text-4xl mb-3 opacity-30" />
+                <p>No trips yet. Go online to start receiving ride requests!</p>
+              </div>
+            )}
           </div>
         </div>
-      )}
 
-      {/* Recent Trips */}
-      <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-        <div className="px-6 py-4 border-b bg-gray-50 flex items-center justify-between">
-          <div className="flex items-center gap-2"><FaHistory className="text-blue-600" /><h3 className="text-sm font-semibold text-gray-900">Recent Trips</h3></div>
-          <button onClick={() => navigate('/driver/trips')} className="text-xs text-blue-600 hover:text-blue-700 font-medium">View All →</button>
-        </div>
-        <div className="divide-y divide-gray-200">
-          {tripHistory.slice(0, 5).map((trip, idx) => {
-            const tripStatus = (trip.status || trip.bookingStatus)?.toLowerCase();
-            return (
-              <div key={idx} className="p-5 hover:bg-gray-50 transition-colors">
-                <div className="flex items-center justify-between flex-wrap gap-4">
-                  <div className="flex items-center gap-4">
-                    <div className={`w-10 h-10 rounded-full flex items-center justify-center ${tripStatus === 'completed' ? 'bg-green-100' : tripStatus === 'ongoing' ? 'bg-blue-100' : tripStatus === 'cancelled' ? 'bg-red-100' : 'bg-gray-100'}`}>
-                      {tripStatus === 'completed' ? <FaCheckCircle className="text-green-600" /> : tripStatus === 'cancelled' ? <FaBan className="text-red-600" /> : <FaRoute className="text-gray-600" />}
-                    </div>
-                    <div>
-                      <p className="font-medium text-gray-900">Trip #{trip._id?.slice(-8)}</p>
-                      <p className="text-xs text-gray-500">{new Date(trip.createdAt).toLocaleDateString()} • {trip.pickup?.address?.split(',')[0]} → {trip.drop?.address?.split(',')[0]}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <p className="text-lg font-bold text-green-600">₹{trip.actualFare || trip.fareEstimate || 0}</p>
-                    {tripStatus === 'ongoing' && (
-                      <button onClick={() => handleStartTrip(trip._id)} className="px-3 py-1.5 bg-blue-600 text-white rounded-lg text-sm">Start Trip</button>
-                    )}
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-          {tripHistory.length === 0 && (
-            <div className="py-12 text-center text-gray-400">
-              <FaCar className="mx-auto text-4xl mb-3 opacity-30" />
-              <p>No trips yet. Go online to start receiving ride requests!</p>
-            </div>
-          )}
+        {/* Quick Actions */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          <button onClick={() => navigate('/driver/wallet')} className="bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl p-5 flex items-center gap-3"><FaWallet size={24} /><div><h3 className="font-semibold">Wallet</h3><p className="text-xs">Balance & withdraw</p></div></button>
+          <button onClick={() => navigate('/driver/trips')} className="bg-gradient-to-r from-green-600 to-green-700 text-white rounded-xl p-5 flex items-center gap-3"><FaHistory size={24} /><div><h3 className="font-semibold">Trip History</h3><p className="text-xs">All trips</p></div></button>
+          <button onClick={() => navigate('/driver/profile')} className="bg-gradient-to-r from-purple-600 to-purple-700 text-white rounded-xl p-5 flex items-center gap-3"><FaUser size={24} /><div><h3 className="font-semibold">Profile</h3><p className="text-xs">Update details</p></div></button>
+          <button onClick={() => navigate('/driver/support')} className="bg-gradient-to-r from-orange-600 to-orange-700 text-white rounded-xl p-5 flex items-center gap-3"><FaHeadset size={24} /><div><h3 className="font-semibold">Support</h3><p className="text-xs">Get help</p></div></button>
         </div>
       </div>
-
-      {/* Quick Actions */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <button onClick={() => navigate('/driver/wallet')} className="bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl p-5 flex items-center gap-3"><FaWallet size={24} /><div><h3 className="font-semibold">Wallet</h3><p className="text-xs">Balance & withdraw</p></div></button>
-        <button onClick={() => navigate('/driver/trips')} className="bg-gradient-to-r from-green-600 to-green-700 text-white rounded-xl p-5 flex items-center gap-3"><FaHistory size={24} /><div><h3 className="font-semibold">Trip History</h3><p className="text-xs">All trips</p></div></button>
-        <button onClick={() => navigate('/driver/profile')} className="bg-gradient-to-r from-purple-600 to-purple-700 text-white rounded-xl p-5 flex items-center gap-3"><FaUser size={24} /><div><h3 className="font-semibold">Profile</h3><p className="text-xs">Update details</p></div></button>
-        <button onClick={() => navigate('/driver/support')} className="bg-gradient-to-r from-orange-600 to-orange-700 text-white rounded-xl p-5 flex items-center gap-3"><FaHeadset size={24} /><div><h3 className="font-semibold">Support</h3><p className="text-xs">Get help</p></div></button>
-      </div>
-    </div>
     </>
   );
 }

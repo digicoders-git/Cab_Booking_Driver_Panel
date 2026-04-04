@@ -68,7 +68,7 @@ export default function DriverProfile() {
       setTotalTrips(data.totalTrips || 0);
       setTotalEarnings(data.totalEarnings || 0);
       setRating(data.rating || 0);
-      setImagePreview(data.image ? `http://localhost:5000/uploads/${data.image}` : null);
+      setImagePreview(data.image ? `${import.meta.env.VITE_API_BASE_URL}/uploads/${data.image}` : null);
     } catch (err) {
       toast.error('Failed to load profile');
     } finally {

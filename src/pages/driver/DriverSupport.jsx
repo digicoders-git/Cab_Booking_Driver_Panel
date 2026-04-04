@@ -304,12 +304,6 @@ export default function DriverSupport() {
               <p className="text-sm text-gray-500 mt-1">Get help with your issues and track your tickets</p>
             </div>
           </div>
-          <button
-            onClick={fetchTickets}
-            className="p-2.5 bg-white rounded-xl border border-gray-200 hover:border-blue-300 hover:text-blue-600 transition-all shadow-sm"
-          >
-            <FaSync className={loading ? 'animate-spin' : ''} />
-          </button>
         </div>
 
         {/* Stats Cards */}
@@ -434,34 +428,34 @@ export default function DriverSupport() {
         {/* Filters */}
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4 mb-6">
           <div className="flex flex-col sm:flex-row gap-4">
-            <div className="flex items-center gap-2 p-1 bg-gray-100 rounded-lg">
+            <div className="flex items-center gap-1 p-1 bg-gray-100 rounded-lg overflow-x-auto">
               <button
                 onClick={() => { setFilter('all'); setCurrentPage(1); }}
-                className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${filter === 'all' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-600'}`}
+                className={`px-2 sm:px-4 py-1.5 rounded-md text-xs sm:text-sm font-medium transition-all whitespace-nowrap ${filter === 'all' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-600'}`}
               >
                 All
               </button>
               <button
                 onClick={() => { setFilter('open'); setCurrentPage(1); }}
-                className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${filter === 'open' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-600'}`}
+                className={`px-2 sm:px-4 py-1.5 rounded-md text-xs sm:text-sm font-medium transition-all whitespace-nowrap ${filter === 'open' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-600'}`}
               >
                 Open
               </button>
               <button
                 onClick={() => { setFilter('in-progress'); setCurrentPage(1); }}
-                className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${filter === 'in-progress' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-600'}`}
+                className={`px-2 sm:px-4 py-1.5 rounded-md text-xs sm:text-sm font-medium transition-all whitespace-nowrap ${filter === 'in-progress' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-600'}`}
               >
-                In Progress
+                Progress
               </button>
               <button
                 onClick={() => { setFilter('resolved'); setCurrentPage(1); }}
-                className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${filter === 'resolved' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-600'}`}
+                className={`px-2 sm:px-4 py-1.5 rounded-md text-xs sm:text-sm font-medium transition-all whitespace-nowrap ${filter === 'resolved' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-600'}`}
               >
                 Resolved
               </button>
               <button
                 onClick={() => { setFilter('closed'); setCurrentPage(1); }}
-                className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${filter === 'closed' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-600'}`}
+                className={`px-2 sm:px-4 py-1.5 rounded-md text-xs sm:text-sm font-medium transition-all whitespace-nowrap ${filter === 'closed' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-600'}`}
               >
                 Closed
               </button>

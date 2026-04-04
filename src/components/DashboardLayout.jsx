@@ -44,15 +44,15 @@ const DashboardLayout = () => {
       try {
         const res = await driverService.getProfile();
         setDriverProfile(res?.driver || res);
-        
+
         // Check if car is assigned - Sirf GADI ke fields check karo (Driver ID nahi!)
         const driver = res?.driver || res;
         const car = driver?.carDetails || driver?.vehicleDetails || null;
-        
-        const hasCarAssigned = 
-          driver?.carId || 
-          driver?.assignedCar || 
-          driver?.carNumber || 
+
+        const hasCarAssigned =
+          driver?.carId ||
+          driver?.assignedCar ||
+          driver?.carNumber ||
           driver?.carModel ||
           car?.carNumber ||
           car?.carModel ||
@@ -60,7 +60,7 @@ const DashboardLayout = () => {
           car?.vehicleNumber ||
           car?.model ||
           car?.vehicleModel;
-        
+
         console.log('🚗 DashboardLayout - Final Car Check:', { hasCarAssigned, driver });
 
         if (hasCarAssigned) {
@@ -138,7 +138,7 @@ const DashboardLayout = () => {
   // Toggle Online/Offline
   const handleToggleOnline = useCallback(async () => {
     const driverId = admin?._id || admin?.id;
-    
+
     if (isOnlineRef.current) {
       // Offline karo
       isOnlineRef.current = false;
@@ -233,7 +233,7 @@ const DashboardLayout = () => {
 
     socket.on('new_ride_request', (data) => {
       console.log('🚗 new_ride_request received:', data);
-      
+
       // ✅ NEW: Check if driver has car assigned
       const hasCar = driverProfile?.carId || driverProfile?.carDetails?._id || driverProfile?.carNumber || driverProfile?.assignedCar;
       if (!hasCar) {
@@ -241,15 +241,15 @@ const DashboardLayout = () => {
         toast.error('🚗 Aapke paas gadi assign nahi hai');
         return;
       }
-      
+
       // Show modal instead of just toast
       setRideRequest(data);
       setShowRideModal(true);
-      
+
       // Also show toast as backup
       toast.success(
         `🚗 New Ride Request! Tap to view details`,
-        { 
+        {
           duration: 5000,
           action: {
             label: 'View',
@@ -283,12 +283,12 @@ const DashboardLayout = () => {
 
   const handleLogout = useCallback(async () => {
     const driverId = admin?._id || admin?.id;
-    
+
     isOnlineRef.current = false;     // ✅ Internal ref update
-    
+
     // ✅ Backend sambhal lega auto-offline, bas socket disconnect karo
     disconnectSocket(driverId);
-    
+
     hasInitialized.current = false;
     logout();
     navigate("/login", { replace: true });
@@ -337,10 +337,10 @@ const DashboardLayout = () => {
           isOnline={isDriverOnline}
           onToggleOnline={handleToggleOnline}
         />
-        <main className="flex-1 overflow-y-auto p-6" style={{ backgroundColor: themeColors.background }}>
+        <main className="flex-1 overflow-y-auto p-2 sm:p-4 md:p-6" style={{ backgroundColor: themeColors.background }}>
           <Outlet />
         </main>
-        
+
         {/* Ride Request Modal */}
         <RideRequestModal
           isOpen={showRideModal}

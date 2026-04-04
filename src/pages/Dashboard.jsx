@@ -486,21 +486,21 @@ export default function DriverDashboard() {
 
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div className="flex items-center gap-4">
-          <div className="w-14 h-14 rounded-full bg-gradient-to-r from-blue-600 to-purple-600 flex items-center justify-center text-white font-bold text-xl">
+        <div className="flex items-center gap-3 sm:gap-4">
+          <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-gradient-to-r from-blue-600 to-purple-600 flex items-center justify-center text-white font-bold text-lg sm:text-xl flex-shrink-0">
             {profile?.name?.charAt(0) || 'D'}
           </div>
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Welcome, {profile?.name || 'Driver'}!</h1>
-            <div className="flex items-center gap-3 mt-1">
+          <div className="min-w-0">
+            <h1 className="text-sm sm:text-2xl font-bold text-gray-900 truncate">Welcome, {profile?.name || 'Driver'}</h1>
+            <div className="flex items-center gap-2 sm:gap-3 mt-1 flex-wrap text-xs sm:text-sm">
               <div className="flex items-center gap-1">
-                <FaStar className="text-yellow-400" size={14} />
-                <span className="text-sm font-medium">{profile?.rating || 0} ★</span>
+                <FaStar className="text-yellow-400" size={12} />
+                <span className="font-medium">{profile?.rating || 0} ★</span>
               </div>
-              <div className="w-px h-3 bg-gray-300" />
-              <span className="text-sm text-gray-500">{profile?.carModel || profile?.carDetails?.carModel || 'Car not assigned'}</span>
-              <div className="w-px h-3 bg-gray-300" />
-              <span className="text-sm text-gray-500">{profile?.carNumber || profile?.carDetails?.carNumber || 'No plate'}</span>
+              <div className="w-px h-3 bg-gray-300 hidden sm:block" />
+              <span className="text-gray-500 truncate">{profile?.carModel || profile?.carDetails?.carModel || 'Car not assigned'}</span>
+              <div className="w-px h-3 bg-gray-300 hidden sm:block" />
+              <span className="text-gray-500 truncate">{profile?.carNumber || profile?.carDetails?.carNumber || 'No plate'}</span>
             </div>
           </div>
         </div>

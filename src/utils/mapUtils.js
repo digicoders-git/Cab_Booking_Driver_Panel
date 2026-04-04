@@ -1,57 +1,135 @@
 // src/utils/mapUtils.js
 let isGoogleMapsLoaded = false;
 let googleMapsPromise = null;
+let scriptLoadAttempts = 0;
+const MAX_ATTEMPTS = 3;
 
 // Single instance Google Maps loader with caching
 export const loadGoogleMaps = () => {
+  // ✅ Check if already loaded
   if (isGoogleMapsLoaded && window.google?.maps) {
+    console.log('✅ Google Maps already loaded');
     return Promise.resolve();
   }
 
+  // ✅ Return existing promise if loading
   if (googleMapsPromise) {
+    console.log('⏳ Google Maps loading in progress...');
     return googleMapsPromise;
   }
 
   googleMapsPromise = new Promise((resolve, reject) => {
+    // ✅ Double check if loaded
     if (window.google?.maps) {
       isGoogleMapsLoaded = true;
+      console.log('✅ Google Maps already available');
       return resolve();
     }
 
-    const script = document.createElement('script');
     const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
     
     if (!apiKey) {
       console.warn('⚠️ VITE_GOOGLE_MAPS_API_KEY not configured');
+      googleMapsPromise = null;
       reject(new Error('Google Maps API key not configured'));
       return;
     }
-    
+
+    // ✅ Check if script already exists
+    const existingScript = document.querySelector('script[src*="maps.googleapis.com"]');
+    if (existingScript) {
+      console.log('✅ Google Maps script already in DOM');
+      // Wait for it to load
+      if (window.google?.maps) {
+        isGoogleMapsLoaded = true;
+        googleMapsPromise = null;
+        return resolve();
+      }
+      // If not loaded yet, wait a bit
+      const checkInterval = setInterval(() => {
+        if (window.google?.maps) {
+          clearInterval(checkInterval);
+          isGoogleMapsLoaded = true;
+          googleMapsPromise = null;
+          resolve();
+        }
+      }, 100);
+      
+      setTimeout(() => {
+        clearInterval(checkInterval);
+        if (!window.google?.maps) {
+          googleMapsPromise = null;
+          reject(new Error('Google Maps script exists but not loaded'));
+        }
+      }, 5000);
+      return;
+    }
+
+    // ✅ Create new script
+    const script = document.createElement('script');
     script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=geometry,places&loading=async`;
     script.async = true;
     script.defer = true;
     script.type = 'text/javascript';
-    
+
     const timeout = setTimeout(() => {
+      console.error('❌ Google Maps script load timeout');
       googleMapsPromise = null;
-      reject(new Error('Google Maps script load timeout'));
+      scriptLoadAttempts++;
+      
+      // ✅ Retry logic
+      if (scriptLoadAttempts < MAX_ATTEMPTS) {
+        console.log(`🔄 Retrying... (Attempt ${scriptLoadAttempts}/${MAX_ATTEMPTS})`);
+        script.remove();
+        loadGoogleMaps().then(resolve).catch(reject);
+      } else {
+        reject(new Error('Google Maps script load timeout after retries'));
+      }
     }, 10000);
-    
+
     script.onload = () => {
       clearTimeout(timeout);
-      isGoogleMapsLoaded = true;
-      console.log('✅ Google Maps loaded successfully');
-      resolve();
+      
+      // ✅ Wait for google.maps to be available
+      const checkGoogle = setInterval(() => {
+        if (window.google?.maps) {
+          clearInterval(checkGoogle);
+          isGoogleMapsLoaded = true;
+          scriptLoadAttempts = 0;
+          console.log('✅ Google Maps loaded successfully');
+          resolve();
+        }
+      }, 100);
+
+      // ✅ Timeout if google.maps not available
+      setTimeout(() => {
+        clearInterval(checkGoogle);
+        if (!window.google?.maps) {
+          console.error('❌ Google Maps script loaded but google.maps not available');
+          googleMapsPromise = null;
+          reject(new Error('Google Maps script loaded but google.maps not available'));
+        }
+      }, 3000);
     };
-    
+
     script.onerror = (error) => {
       clearTimeout(timeout);
+      console.error('❌ Google Maps script failed to load:', error);
       googleMapsPromise = null;
-      console.error('❌ Google Maps failed to load:', error);
-      reject(new Error('Google Maps failed to load'));
+      scriptLoadAttempts++;
+      
+      // ✅ Retry logic
+      if (scriptLoadAttempts < MAX_ATTEMPTS) {
+        console.log(`🔄 Retrying... (Attempt ${scriptLoadAttempts}/${MAX_ATTEMPTS})`);
+        script.remove();
+        loadGoogleMaps().then(resolve).catch(reject);
+      } else {
+        reject(new Error('Google Maps failed to load after retries'));
+      }
     };
-    
+
     document.head.appendChild(script);
+    console.log('📝 Google Maps script added to DOM');
   });
 
   return googleMapsPromise;
