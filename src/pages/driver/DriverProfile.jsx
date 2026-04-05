@@ -42,6 +42,14 @@ export default function DriverProfile() {
   const [totalTrips, setTotalTrips] = useState(0);
   const [totalEarnings, setTotalEarnings] = useState(0);
   const [rating, setRating] = useState(0);
+  
+  // Document states
+  const [rcPreview, setRcPreview] = useState(null);
+  const [insurancePreview, setInsurancePreview] = useState(null);
+  const [pucPreview, setPucPreview] = useState(null);
+  const [selectedRcFile, setSelectedRcFile] = useState(null);
+  const [selectedInsuranceFile, setSelectedInsuranceFile] = useState(null);
+  const [selectedPucFile, setSelectedPucFile] = useState(null);
 
   useEffect(() => {
     fetchProfile();
@@ -69,6 +77,12 @@ export default function DriverProfile() {
       setTotalEarnings(data.totalEarnings || 0);
       setRating(data.rating || 0);
       setImagePreview(data.image ? `${import.meta.env.VITE_API_BASE_URL}/uploads/${data.image}` : null);
+      
+      // Set Document Previews
+      const carDocs = data.carDetails?.carDocuments || {};
+      setRcPreview(carDocs.rc ? `${import.meta.env.VITE_API_BASE_URL}/uploads/${carDocs.rc}` : null);
+      setInsurancePreview(carDocs.insurance ? `${import.meta.env.VITE_API_BASE_URL}/uploads/${carDocs.insurance}` : null);
+      setPucPreview(carDocs.puc ? `${import.meta.env.VITE_API_BASE_URL}/uploads/${carDocs.puc}` : null);
     } catch (err) {
       toast.error('Failed to load profile');
     } finally {
@@ -84,6 +98,26 @@ export default function DriverProfile() {
       reader.onloadend = () => setImagePreview(reader.result);
       reader.readAsDataURL(file);
     }
+  };
+
+  const handleDocumentChange = (e, type) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      if (type === 'rc') {
+        setSelectedRcFile(file);
+        setRcPreview(reader.result);
+      } else if (type === 'insurance') {
+        setSelectedInsuranceFile(file);
+        setInsurancePreview(reader.result);
+      } else if (type === 'puc') {
+        setSelectedPucFile(file);
+        setPucPreview(reader.result);
+      }
+    };
+    reader.readAsDataURL(file);
   };
 
   const handleSubmit = async (e) => {
@@ -103,6 +137,9 @@ export default function DriverProfile() {
       formData.append('state', state);
       formData.append('pincode', pincode);
       if (selectedFile) formData.append('image', selectedFile);
+      if (selectedRcFile) formData.append('rcImage', selectedRcFile);
+      if (selectedInsuranceFile) formData.append('insuranceImage', selectedInsuranceFile);
+      if (selectedPucFile) formData.append('pucImage', selectedPucFile);
 
       const res = await driverService.updateProfile(formData);
       if (res.success) {
@@ -428,6 +465,84 @@ export default function DriverProfile() {
                           className={`w-full px-4 py-2.5 border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 ${editMode ? 'border-gray-300' : 'border-gray-200 bg-gray-50 text-gray-500'
                             }`}
                         />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Documents Section */}
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                    <div className="w-1 h-4 bg-orange-600 rounded-full" />
+                    Vehicle Documents (Kagaj)
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    {/* RC Document */}
+                    <div className="space-y-2">
+                      <label className="block text-xs font-medium text-gray-600">RC (Registration Certificate)</label>
+                      <div className="relative group aspect-[4/3] rounded-xl overflow-hidden border-2 border-dashed border-gray-200 bg-gray-50 flex items-center justify-center">
+                        {rcPreview ? (
+                          <img src={rcPreview} alt="RC" className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="text-center p-4">
+                            <FaFileAlt className="mx-auto text-gray-300 mb-2" size={24} />
+                            <p className="text-[10px] text-gray-400">No RC Uploaded</p>
+                          </div>
+                        )}
+                        {editMode && (
+                          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                            <label className="cursor-pointer bg-white text-gray-900 px-3 py-1.5 rounded-lg text-xs font-semibold shadow-xl flex items-center gap-2">
+                              <FaCamera size={12} /> Change RC
+                              <input type="file" className="hidden" accept="image/*" onChange={(e) => handleDocumentChange(e, 'rc')} />
+                            </label>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Insurance Document */}
+                    <div className="space-y-2">
+                      <label className="block text-xs font-medium text-gray-600">Insurance Document</label>
+                      <div className="relative group aspect-[4/3] rounded-xl overflow-hidden border-2 border-dashed border-gray-200 bg-gray-50 flex items-center justify-center">
+                        {insurancePreview ? (
+                          <img src={insurancePreview} alt="Insurance" className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="text-center p-4">
+                            <FaFileAlt className="mx-auto text-gray-300 mb-2" size={24} />
+                            <p className="text-[10px] text-gray-400">No Insurance Uploaded</p>
+                          </div>
+                        )}
+                        {editMode && (
+                          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                            <label className="cursor-pointer bg-white text-gray-900 px-3 py-1.5 rounded-lg text-xs font-semibold shadow-xl flex items-center gap-2">
+                              <FaCamera size={12} /> Change Insurance
+                              <input type="file" className="hidden" accept="image/*" onChange={(e) => handleDocumentChange(e, 'insurance')} />
+                            </label>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* PUC Document */}
+                    <div className="space-y-2">
+                      <label className="block text-xs font-medium text-gray-600">PUC Certificate</label>
+                      <div className="relative group aspect-[4/3] rounded-xl overflow-hidden border-2 border-dashed border-gray-200 bg-gray-50 flex items-center justify-center">
+                        {pucPreview ? (
+                          <img src={pucPreview} alt="PUC" className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="text-center p-4">
+                            <FaFileAlt className="mx-auto text-gray-300 mb-2" size={24} />
+                            <p className="text-[10px] text-gray-400">No PUC Uploaded</p>
+                          </div>
+                        )}
+                        {editMode && (
+                          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                            <label className="cursor-pointer bg-white text-gray-900 px-3 py-1.5 rounded-lg text-xs font-semibold shadow-xl flex items-center gap-2">
+                              <FaCamera size={12} /> Change PUC
+                              <input type="file" className="hidden" accept="image/*" onChange={(e) => handleDocumentChange(e, 'puc')} />
+                            </label>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
