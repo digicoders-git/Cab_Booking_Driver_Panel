@@ -116,7 +116,9 @@ export const driverService = {
   getSupportSummary: async () => {
     const response = await driverApi.get('/support/report-summary');
     return response.data;
+  },
+  getCarCategories: async () => {
+    const response = await driverApi.get('/car-categories/active');
+    return response.data;
   }
 };
-
-export default driverService;

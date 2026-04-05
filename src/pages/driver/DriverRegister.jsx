@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { driverService } from '../../api/driverApi';
@@ -65,10 +65,49 @@ export default function DriverRegister() {
   const [form, setForm] = useState(initialForm);
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
+  const [carCategories, setCarCategories] = useState([]);
+  const [loadingCategories, setLoadingCategories] = useState(false);
+
+  // Fetch car categories on component mount
+  useEffect(() => {
+    fetchCarCategories();
+  }, []);
+
+  const fetchCarCategories = async () => {
+    try {
+      setLoadingCategories(true);
+      const response = await driverService.getCarCategories();
+      
+      if (response.success && response.categories) {
+        setCarCategories(response.categories);
+      }
+    } catch (err) {
+      console.error('Failed to fetch car categories:', err);
+      toast.error('Failed to load car categories');
+    } finally {
+      setLoadingCategories(false);
+    }
+  };
 
   const handleChange = (e) => {
     const { name, value, files } = e.target;
-    setForm(prev => ({ ...prev, [name]: files ? files[0] : value }));
+    
+    // Agar carType select kiya toh seat capacity auto fill karo
+    if (name === 'carType' && value) {
+      const selectedCategory = carCategories.find(cat => cat._id === value);
+      if (selectedCategory) {
+        setForm(prev => ({
+          ...prev,
+          [name]: value,
+          seatCapacity: selectedCategory.seatCapacity.toString()
+        }));
+      } else {
+        setForm(prev => ({ ...prev, [name]: files ? files[0] : value }));
+      }
+    } else {
+      setForm(prev => ({ ...prev, [name]: files ? files[0] : value }));
+    }
+    
     if (errors[name]) setErrors(prev => ({ ...prev, [name]: '' }));
   };
 
@@ -102,7 +141,8 @@ export default function DriverRegister() {
       if (!form.carNumber.trim()) errs.carNumber = 'Car number required';
       if (!form.carModel.trim()) errs.carModel = 'Car model required';
       if (!form.carBrand.trim()) errs.carBrand = 'Car brand required';
-      if (!form.carType.trim()) errs.carType = 'Car type/category ID required';
+      if (!form.carType.trim()) errs.carType = 'Car type/category required';
+      // Seat capacity is auto-filled, so no need to validate manually
       if (!form.seatCapacity) errs.seatCapacity = 'Seat capacity required';
       if (!form.carColor.trim()) errs.carColor = 'Car color required';
     }
@@ -252,12 +292,61 @@ export default function DriverRegister() {
                 <InputField label="Car Color" name="carColor" placeholder="White" value={form.carColor} onChange={handleChange} error={errors.carColor} />
               </div>
               <div className="grid grid-cols-2 gap-4">
-                <InputField label="Seat Capacity" name="seatCapacity" type="number" placeholder="4" value={form.seatCapacity} onChange={handleChange} error={errors.seatCapacity} min={1} max={20} />
-                <InputField label="Car Type (Category ID)" name="carType" placeholder="MongoDB ObjectId" value={form.carType} onChange={handleChange} error={errors.carType} />
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Seat Capacity</label>
+                  <input
+                    type="number"
+                    name="seatCapacity"
+                    placeholder="Auto-filled from category"
+                    value={form.seatCapacity}
+                    onChange={handleChange}
+                    disabled={true}
+                    className="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-sm focus:outline-none bg-gray-100 cursor-not-allowed"
+                    min={1}
+                    max={20}
+                  />
+                  {errors.seatCapacity && <p className="text-xs text-red-500 mt-1">{errors.seatCapacity}</p>}
+                </div>
+                {/* Car Type Dropdown */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Car Type (Category)</label>
+                  <select
+                    name="carType"
+                    value={form.carType}
+                    onChange={handleChange}
+                    disabled={loadingCategories}
+                    className={`w-full px-4 py-2.5 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all ${
+                      errors.carType ? 'border-red-400' : 'border-gray-300'
+                    } ${loadingCategories ? 'bg-gray-100 cursor-not-allowed' : 'bg-white'}`}
+                  >
+                    <option value="">{loadingCategories ? 'Loading categories...' : 'Select a car type'}</option>
+                    {carCategories.map((category) => (
+                      <option key={category._id} value={category._id}>
+                        {category.name} ({category.seatCapacity} seats) - ₹{category.baseFare} base fare
+                      </option>
+                    ))}
+                  </select>
+                  {errors.carType && <p className="text-xs text-red-500 mt-1">{errors.carType}</p>}
+                </div>
               </div>
-              <div className="p-3 bg-blue-50 rounded-xl border border-blue-100">
-                <p className="text-xs text-blue-600 font-medium">ℹ️ Car Type mein apne backend se Car Category ka MongoDB ObjectId daalo</p>
-              </div>
+              {carCategories.length > 0 && form.carType && (
+                <div className="p-3 bg-green-50 rounded-xl border border-green-100">
+                  {(() => {
+                    const selected = carCategories.find(c => c._id === form.carType);
+                    return selected ? (
+                      <div className="text-xs text-green-700">
+                        <p className="font-medium mb-1">✅ {selected.name} Selected</p>
+                        <p>Seats: {selected.seatCapacity} | Base Fare: ₹{selected.baseFare} | Rate: ₹{selected.privateRatePerKm}/km</p>
+                      </div>
+                    ) : null;
+                  })()}
+                </div>
+              )}
+              {carCategories.length === 0 && !loadingCategories && (
+                <div className="p-3 bg-yellow-50 rounded-xl border border-yellow-200">
+                  <p className="text-xs text-yellow-700 font-medium">⚠️ No car categories available. Please contact admin.</p>
+                </div>
+              )}
             </div>
           )}
 
