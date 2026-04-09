@@ -9,7 +9,7 @@ import {
   FaCheckCircle, FaCamera, FaFileAlt, FaShieldAlt
 } from 'react-icons/fa';
 
-const STEPS = ['Personal Info', 'Documents', 'Car Details', 'Car Documents'];
+const STEPS = ['Personal Info', 'Documents', 'Bank Details', 'Car Details', 'Documents Upload'];
 
 const InputField = ({ label, icon: Icon, error, ...props }) => (
   <div>
@@ -52,10 +52,13 @@ const initialForm = {
   // Documents
   licenseNumber: '', licenseExpiry: '', aadhar: '', pan: '',
   address: '', city: '', state: '', pincode: '',
+  // Bank Details
+  accountNumber: '', ifscCode: '', accountHolderName: '', bankName: '',
   // Car Details
   carNumber: '', carModel: '', carBrand: '', carType: '', seatCapacity: '', carColor: '',
+  manufacturingYear: '', insuranceExpiry: '', permitExpiry: '', pucExpiry: '',
   // Files
-  image: null, rcImage: null, insuranceImage: null, pucImage: null,
+  image: null, rcImage: null, insuranceImage: null, pucImage: null, permitImage: null,
 };
 
 export default function DriverRegister() {
@@ -138,18 +141,28 @@ export default function DriverRegister() {
       if (!form.image) errs.image = 'Profile photo required';
     }
     if (step === 2) {
+      if (!form.accountNumber.trim()) errs.accountNumber = 'Account number required';
+      if (!form.ifscCode.trim()) errs.ifscCode = 'IFSC code required';
+      if (!form.accountHolderName.trim()) errs.accountHolderName = 'Account holder name required';
+      if (!form.bankName.trim()) errs.bankName = 'Bank name required';
+    }
+    if (step === 3) {
       if (!form.carNumber.trim()) errs.carNumber = 'Car number required';
       if (!form.carModel.trim()) errs.carModel = 'Car model required';
       if (!form.carBrand.trim()) errs.carBrand = 'Car brand required';
-      if (!form.carType.trim()) errs.carType = 'Car type/category required';
-      // Seat capacity is auto-filled, so no need to validate manually
+      if (!form.carType.trim()) errs.carType = 'Car type required';
       if (!form.seatCapacity) errs.seatCapacity = 'Seat capacity required';
       if (!form.carColor.trim()) errs.carColor = 'Car color required';
+      if (!form.manufacturingYear) errs.manufacturingYear = 'Manufacturing year required';
     }
-    if (step === 3) {
+    if (step === 4) {
       if (!form.rcImage) errs.rcImage = 'RC document required';
       if (!form.insuranceImage) errs.insuranceImage = 'Insurance document required';
+      if (!form.insuranceExpiry) errs.insuranceExpiry = 'Insurance expiry required';
+      if (!form.permitImage) errs.permitImage = 'Permit document required';
+      if (!form.permitExpiry) errs.permitExpiry = 'Permit expiry required';
       if (!form.pucImage) errs.pucImage = 'PUC document required';
+      if (!form.pucExpiry) errs.pucExpiry = 'PUC expiry required';
     }
     setErrors(errs);
     return Object.keys(errs).length === 0;
@@ -184,10 +197,20 @@ export default function DriverRegister() {
       fd.append('carType', form.carType);
       fd.append('seatCapacity', form.seatCapacity);
       fd.append('carColor', form.carColor);
+      fd.append('manufacturingYear', form.manufacturingYear);
+      fd.append('insuranceExpiry', form.insuranceExpiry);
+      fd.append('permitExpiry', form.permitExpiry);
+      fd.append('pucExpiry', form.pucExpiry);
+      // Bank
+      fd.append('accountNumber', form.accountNumber);
+      fd.append('ifscCode', form.ifscCode);
+      fd.append('accountHolderName', form.accountHolderName);
+      fd.append('bankName', form.bankName);
       // Files
       fd.append('image', form.image);
       fd.append('rcImage', form.rcImage);
       fd.append('insuranceImage', form.insuranceImage);
+      fd.append('permitImage', form.permitImage);
       fd.append('pucImage', form.pucImage);
 
       const res = await driverService.register(fd);
@@ -280,8 +303,20 @@ export default function DriverRegister() {
             </div>
           )}
 
-          {/* Step 2: Car Details */}
+          {/* Step 2: Bank Details */}
           {step === 2 && (
+            <div className="space-y-4">
+              <InputField label="Account Holder Name" name="accountHolderName" placeholder="Vivek Kumar" value={form.accountHolderName} onChange={handleChange} error={errors.accountHolderName} />
+              <InputField label="Account Number" name="accountNumber" placeholder="123456789012" value={form.accountNumber} onChange={handleChange} error={errors.accountNumber} />
+              <div className="grid grid-cols-2 gap-4">
+                <InputField label="Bank Name" name="bankName" placeholder="SBI" value={form.bankName} onChange={handleChange} error={errors.bankName} />
+                <InputField label="IFSC Code" name="ifscCode" placeholder="SBIN0001234" value={form.ifscCode} onChange={handleChange} error={errors.ifscCode} maxLength={11} />
+              </div>
+            </div>
+          )}
+
+          {/* Step 3: Car Details */}
+          {step === 3 && (
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <InputField label="Car Number" name="carNumber" icon={FaCar} placeholder="UP32-AB-1234" value={form.carNumber} onChange={handleChange} error={errors.carNumber} />
@@ -292,21 +327,7 @@ export default function DriverRegister() {
                 <InputField label="Car Color" name="carColor" placeholder="White" value={form.carColor} onChange={handleChange} error={errors.carColor} />
               </div>
               <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Seat Capacity</label>
-                  <input
-                    type="number"
-                    name="seatCapacity"
-                    placeholder="Auto-filled from category"
-                    value={form.seatCapacity}
-                    onChange={handleChange}
-                    disabled={true}
-                    className="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-sm focus:outline-none bg-gray-100 cursor-not-allowed"
-                    min={1}
-                    max={20}
-                  />
-                  {errors.seatCapacity && <p className="text-xs text-red-500 mt-1">{errors.seatCapacity}</p>}
-                </div>
+                <InputField label="Manufacturing Year" name="manufacturingYear" type="number" placeholder="2024" value={form.manufacturingYear} onChange={handleChange} error={errors.manufacturingYear} min="2000" max={new Date().getFullYear()} />
                 {/* Car Type Dropdown */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Car Type (Category)</label>
@@ -322,12 +343,15 @@ export default function DriverRegister() {
                     <option value="">{loadingCategories ? 'Loading categories...' : 'Select a car type'}</option>
                     {carCategories.map((category) => (
                       <option key={category._id} value={category._id}>
-                        {category.name} ({category.seatCapacity} seats) - ₹{category.baseFare} base fare
+                        {category.name} ({category.seatCapacity} seats)
                       </option>
                     ))}
                   </select>
                   {errors.carType && <p className="text-xs text-red-500 mt-1">{errors.carType}</p>}
                 </div>
+              </div>
+              <div className="hidden">
+                 <InputField label="Seat Capacity" name="seatCapacity" value={form.seatCapacity} readOnly />
               </div>
               {carCategories.length > 0 && form.carType && (
                 <div className="p-3 bg-green-50 rounded-xl border border-green-100">
@@ -350,14 +374,21 @@ export default function DriverRegister() {
             </div>
           )}
 
-          {/* Step 3: Car Documents */}
-          {step === 3 && (
+          {/* Step 4: Documents Upload & Expiry */}
+          {step === 4 && (
             <div className="space-y-4">
-              <FileUpload label="RC (Registration Certificate)" name="rcImage" value={form.rcImage} onChange={handleChange} error={errors.rcImage} />
-              <FileUpload label="Insurance Document" name="insuranceImage" value={form.insuranceImage} onChange={handleChange} error={errors.insuranceImage} />
-              <FileUpload label="PUC Certificate" name="pucImage" value={form.pucImage} onChange={handleChange} error={errors.pucImage} />
-              <div className="p-3 bg-yellow-50 rounded-xl border border-yellow-200">
-                <p className="text-xs text-yellow-700 font-medium">⚠️ Registration ke baad Admin approval ka wait karna hoga. Tab tak dashboard mein pending status dikhega.</p>
+              <FileUpload label="RC Document" name="rcImage" value={form.rcImage} onChange={handleChange} error={errors.rcImage} />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FileUpload label="Insurance Document" name="insuranceImage" value={form.insuranceImage} onChange={handleChange} error={errors.insuranceImage} />
+                <InputField label="Insurance Expiry" name="insuranceExpiry" type="date" value={form.insuranceExpiry} onChange={handleChange} error={errors.insuranceExpiry} />
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FileUpload label="Permit Document" name="permitImage" value={form.permitImage} onChange={handleChange} error={errors.permitImage} />
+                <InputField label="Permit Expiry" name="permitExpiry" type="date" value={form.permitExpiry} onChange={handleChange} error={errors.permitExpiry} />
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FileUpload label="PUC Certificate" name="pucImage" value={form.pucImage} onChange={handleChange} error={errors.pucImage} />
+                <InputField label="PUC Expiry" name="pucExpiry" type="date" value={form.pucExpiry} onChange={handleChange} error={errors.pucExpiry} />
               </div>
             </div>
           )}
