@@ -10,6 +10,7 @@ import {
   FaPlay, FaStop, FaKey, FaCar, FaTaxi
 } from 'react-icons/fa';
 import { Navigation, MapPin } from 'lucide-react';
+import { getSocket } from '../../socket/socket';
 
 export default function DriverTripDetail() {
   const { id: shortId } = useParams();
@@ -49,7 +50,48 @@ export default function DriverTripDetail() {
 
   useEffect(() => {
     fetchTrip();
-  }, [fetchTrip]);
+
+    // 🎯 Real-time Booking Update Listener (Cancellation etc.)
+    const socket = getSocket();
+    if (socket) {
+      console.log('📡 DriverTripDetail: socket listener attached');
+      socket.on('booking_update', (data) => {
+        console.log('🔔 Booking Details Updated:', data);
+        
+        // Match using full ID or just the shortId from URL for instant response
+        const isTargetBooking = (trip && trip._id === data.bookingId) || 
+                               (data.bookingId && data.bookingId.endsWith(shortId));
+
+        if (isTargetBooking) {
+          if (data.status === 'Cancelled' || data.status === 'Expired') {
+            // Update local state instantly so UI shows "Cancelled" in background
+            setTrip(prev => prev ? { ...prev, bookingStatus: data.status } : null);
+
+            Swal.fire({
+              icon: 'error',
+              title: data.status === 'Cancelled' ? 'Trip Cancelled! ❌' : 'Trip Expired! ⏳',
+              text: data.message || `The customer has ${data.status.toLowerCase()} this ride.`,
+              confirmButtonText: 'Back to Dashboard',
+              confirmButtonColor: '#EF4444',
+              allowOutsideClick: false,
+              backdrop: `rgba(239, 68, 68, 0.15) blur(4px)`
+            }).then(() => {
+              navigate('/dashboard');
+            });
+          } else {
+            fetchTrip();
+          }
+        }
+      });
+    }
+
+    return () => {
+      if (socket) {
+        socket.off('booking_update');
+        console.log('⚰️ DriverTripDetail: socket listener removed');
+      }
+    };
+  }, [fetchTrip, trip, shortId, navigate]);
 
   // OTP se Trip Start
   const handleStartTrip = async () => {

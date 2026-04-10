@@ -75,6 +75,7 @@ export default function DriverDashboard() {
   const [selectedChart, setSelectedChart] = useState('all');
   const [showRideModal, setShowRideModal] = useState(false);
   const [currentRideRequest, setCurrentRideRequest] = useState(null);
+  const [countdown, setCountdown] = useState(10);
 
   const prevRequestIdsRef = useRef(null);
 
@@ -146,8 +147,10 @@ export default function DriverDashboard() {
             console.log('📍 Pickup:', req.booking?.pickup?.address?.split(',')[0]);
             console.log('💰 Fare:', req.booking?.fareEstimate);
 
+            const remaining = Math.max(0, Math.round(((req.expiresAt || (new Date(req.createdAt).getTime() + 10000)) - Date.now()) / 1000));
             setCurrentRideRequest(req);
             setShowRideModal(true);
+            setCountdown(remaining); // Sync with backend time
             prevRequestIdsRef.current.add(req._id);
             foundNewRequest = true;
             console.log('✅ Modal state updated: showRideModal = true');
@@ -208,12 +211,27 @@ export default function DriverDashboard() {
               console.log('📍 Pickup:', req.booking?.pickup?.address?.split(',')[0]);
               console.log('💰 Fare:', req.booking?.fareEstimate);
 
+              const remaining = Math.max(0, Math.round(((req.expiresAt || (new Date(req.createdAt).getTime() + 10000)) - Date.now()) / 1000));
               setCurrentRideRequest(req);
               setShowRideModal(true);
+              setCountdown(remaining); // Sync from polling
               prevRequestIdsRef.current.add(req._id);
               foundNew = true;
               console.log('✅ Modal triggered from polling');
             }
+          });
+
+          // SYNC CHECK: Agar current request list se gayab ho gayi hai, toh modal close kar do
+          setCurrentRideRequest(prev => {
+            if (prev) {
+              const stillActive = newRequests.find(r => r._id === prev._id);
+              if (!stillActive) {
+                console.log('⚠️ CURRENT REQUEST NO LONGER PENDING - Closing Modal');
+                setShowRideModal(false);
+                return null;
+              }
+            }
+            return prev;
           });
 
           if (!foundNew) {
@@ -244,6 +262,8 @@ export default function DriverDashboard() {
         console.log('⏰ Event Time:', new Date().toLocaleTimeString());
         console.log('📦 Event Data:', data);
         console.log('🔄 Triggering fetchDashboardData...');
+        const remaining = Math.max(0, Math.round((data.expiresAt - Date.now()) / 1000));
+        setCountdown(remaining); // Sync from socket event
         fetchDashboardData();
         console.log('========================================\n');
       });
@@ -253,6 +273,23 @@ export default function DriverDashboard() {
         console.log('⏰ Event Time:', new Date().toLocaleTimeString());
         console.log('📦 Event Data:', data);
         console.log('🔄 Triggering fetchDashboardData...');
+        fetchDashboardData();
+        console.log('========================================\n');
+      });
+
+      socket.on('ride_request_timeout', (data) => {
+        console.log('\n⏰ ========== SOCKET EVENT: ride_request_timeout ==========');
+        console.log('📦 Timeout Data:', data);
+        
+        setCurrentRideRequest(prev => {
+          if (prev && prev._id === data.requestId) {
+            console.log('🚫 Closing Modal due to Timeout');
+            setShowRideModal(false);
+            return null;
+          }
+          return prev;
+        });
+        
         fetchDashboardData();
         console.log('========================================\n');
       });
@@ -274,6 +311,23 @@ export default function DriverDashboard() {
       console.log('========================================\n');
     };
   }, []);
+
+  useEffect(() => {
+    let timer;
+    if (showRideModal && countdown > 0) {
+      timer = setInterval(() => {
+        setCountdown(prev => {
+          if (prev <= 1) {
+            clearInterval(timer);
+            setShowRideModal(false);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }
+    return () => clearInterval(timer);
+  }, [showRideModal, countdown]);
 
   const handleAcceptRide = async (requestId) => {
     try {
@@ -479,23 +533,53 @@ export default function DriverDashboard() {
             WebkitBackdropFilter: 'blur(8px)'
           }}
         >
-          <div className="bg-white rounded-3xl shadow-2xl max-w-lg w-full overflow-hidden animate-[slideUp_0.3s_ease-out] border-2 border-gray-100">
+          <div className="bg-white rounded-[2rem] shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto animate-[slideUp_0.3s_ease-out] border-2 border-gray-100 mx-2">
             {/* Header */}
-            <div className="bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-700 px-6 py-5 relative overflow-hidden">
+            <div className="bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-700 px-4 sm:px-6 py-4 sm:py-5 relative overflow-hidden">
               {/* Animated Background Pattern */}
               <div className="absolute inset-0 opacity-10">
                 <div className="absolute top-0 left-0 w-32 h-32 bg-white rounded-full -translate-x-16 -translate-y-16"></div>
                 <div className="absolute bottom-0 right-0 w-40 h-40 bg-white rounded-full translate-x-20 translate-y-20"></div>
               </div>
 
-              <div className="relative flex items-center gap-4">
-                <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center shadow-lg transform hover:scale-110 transition-transform">
-                  <FaCar className="text-blue-600 text-2xl" />
+              {/* Countdown Timer Circle */}
+              <div className="absolute top-4 right-4 flex items-center justify-center">
+                <div className="relative w-12 h-12 flex items-center justify-center">
+                  <svg className="w-full h-full transform -rotate-90">
+                    <circle
+                      cx="24"
+                      cy="24"
+                      r="20"
+                      stroke="rgba(255,255,255,0.2)"
+                      strokeWidth="4"
+                      fill="transparent"
+                    />
+                    <circle
+                      cx="24"
+                      cy="24"
+                      r="20"
+                      stroke="white"
+                      strokeWidth="4"
+                      fill="transparent"
+                      strokeDasharray={125.6}
+                      strokeDashoffset={125.6 * (1 - countdown / 10)}
+                      className="transition-all duration-1000 ease-linear"
+                    />
+                  </svg>
+                  <span className="absolute text-white font-black text-sm animate-pulse">
+                    {countdown}
+                  </span>
+                </div>
+              </div>
+
+              <div className="relative flex items-center gap-3 sm:gap-4">
+                <div className="w-12 h-12 sm:w-16 sm:h-16 bg-white rounded-xl sm:rounded-2xl flex items-center justify-center shadow-lg transform hover:scale-110 transition-transform flex-shrink-0">
+                  <FaCar className="text-blue-600 text-xl sm:text-2xl" />
                 </div>
                 <div className="flex-1">
-                  <h2 className="text-2xl font-bold text-white mb-1">New Ride Request!</h2>
-                  <p className="text-blue-100 text-sm flex items-center gap-2">
-                    <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
+                  <h2 className="text-lg sm:text-2xl font-bold text-white mb-0.5 sm:mb-1">New Ride Request!</h2>
+                  <p className="text-blue-100 text-[10px] sm:text-sm flex items-center gap-2">
+                    <span className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse"></span>
                     Respond quickly to accept
                   </p>
                 </div>
@@ -503,16 +587,16 @@ export default function DriverDashboard() {
             </div>
 
             {/* Body */}
-            <div className="p-6 space-y-5 bg-gradient-to-b from-gray-50 to-white">
+            <div className="p-4 sm:p-6 space-y-4 sm:space-y-5 bg-gradient-to-b from-gray-50 to-white">
               {/* Passenger Info */}
-              <div className="flex items-center gap-4 p-4 bg-white rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
-                <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl flex items-center justify-center text-white font-bold text-2xl shadow-lg">
+              <div className="flex items-center gap-3 sm:gap-4 p-3 sm:p-4 bg-white rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+                <div className="w-12 h-12 sm:w-16 sm:h-16 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl sm:rounded-2xl flex items-center justify-center text-white font-bold text-lg sm:text-2xl shadow-lg flex-shrink-0">
                   {currentRideRequest.booking?.passengerDetails?.name?.charAt(0) || 'P'}
                 </div>
-                <div className="flex-1">
-                  <p className="font-bold text-gray-900 text-lg">{currentRideRequest.booking?.passengerDetails?.name || 'Passenger'}</p>
-                  <p className="text-sm text-gray-500 flex items-center gap-2">
-                    <FaPhone className="text-green-600" size={12} />
+                <div className="flex-1 min-w-0">
+                  <p className="font-bold text-gray-900 text-base sm:text-lg truncate">{currentRideRequest.booking?.passengerDetails?.name || 'Passenger'}</p>
+                  <p className="text-xs text-gray-500 flex items-center gap-2">
+                    <FaPhone className="text-green-600" size={10} />
                     {currentRideRequest.booking?.passengerDetails?.phone || '—'}
                   </p>
                 </div>
@@ -551,35 +635,35 @@ export default function DriverDashboard() {
               </div>
 
               {/* Fare & Distance Cards */}
-              <div className="grid grid-cols-3 gap-3">
-                <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-2xl p-4 text-center shadow-lg transform hover:scale-105 transition-transform">
-                  <p className="text-3xl font-bold text-white">₹{currentRideRequest.booking?.fareEstimate || 0}</p>
-                  <p className="text-xs text-green-100 mt-1 font-medium">Fare</p>
+              <div className="grid grid-cols-3 gap-2 sm:gap-3">
+                <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-xl sm:rounded-2xl p-2.5 sm:p-4 text-center shadow-lg transform hover:scale-105 transition-transform flex flex-col justify-center">
+                  <p className="text-xl sm:text-3xl font-bold text-white tracking-tighter italic">₹{currentRideRequest.booking?.fareEstimate || 0}</p>
+                  <p className="text-[9px] sm:text-xs text-green-100 mt-0.5 sm:mt-1 font-medium uppercase tracking-widest">Fare</p>
                 </div>
-                <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl p-4 text-center shadow-lg transform hover:scale-105 transition-transform">
-                  <p className="text-3xl font-bold text-white">{currentRideRequest.booking?.estimatedDistanceKm || 0}</p>
-                  <p className="text-xs text-blue-100 mt-1 font-medium">KM</p>
+                <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl sm:rounded-2xl p-2.5 sm:p-4 text-center shadow-lg transform hover:scale-105 transition-transform flex flex-col justify-center">
+                  <p className="text-xl sm:text-3xl font-bold text-white tracking-tighter">{currentRideRequest.booking?.estimatedDistanceKm || 0}</p>
+                  <p className="text-[9px] sm:text-xs text-blue-100 mt-0.5 sm:mt-1 font-medium uppercase tracking-widest">KM</p>
                 </div>
-                <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl p-4 text-center shadow-lg transform hover:scale-105 transition-transform">
-                  <p className="text-lg font-bold text-white leading-tight">{currentRideRequest.booking?.rideType || 'Ride'}</p>
-                  <p className="text-xs text-purple-100 mt-1 font-medium">Type</p>
+                <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl sm:rounded-2xl p-2.5 sm:p-4 text-center shadow-lg transform hover:scale-105 transition-transform flex flex-col justify-center min-w-0">
+                  <p className="text-xs sm:text-lg font-bold text-white leading-tight truncate uppercase tracking-tighter">{currentRideRequest.booking?.rideType || 'Ride'}</p>
+                  <p className="text-[9px] sm:text-xs text-purple-100 mt-0.5 sm:mt-1 font-medium uppercase tracking-widest">Type</p>
                 </div>
               </div>
-            </div>
+</div>
 
             {/* Footer Actions */}
-            <div className="px-6 pb-6 pt-2 flex gap-3 bg-white">
+            <div className="px-4 sm:px-6 pb-5 sm:pb-6 pt-1 flex gap-2 sm:gap-3 bg-white">
               <button
                 onClick={() => handleRejectRide(currentRideRequest._id)}
-                className="flex-1 py-4 px-4 bg-gray-100 hover:bg-gray-200 active:bg-gray-300 text-gray-700 rounded-2xl font-bold text-base transition-all flex items-center justify-center gap-2 shadow-sm hover:shadow-md"
+                className="flex-1 py-3.5 sm:py-4 px-3 sm:px-4 bg-gray-100 hover:bg-gray-200 active:bg-gray-300 text-gray-700 rounded-xl sm:rounded-2xl font-bold text-sm sm:text-base transition-all flex items-center justify-center gap-2 shadow-sm hover:shadow-md"
               >
-                <FaBan size={18} /> Reject
+                <FaBan size={16} /> Reject
               </button>
               <button
                 onClick={() => handleAcceptRide(currentRideRequest._id)}
-                className="flex-1 py-4 px-4 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 active:scale-95 text-white rounded-2xl font-bold text-base transition-all flex items-center justify-center gap-2 shadow-lg hover:shadow-xl"
+                className="flex-1 py-3.5 sm:py-4 px-3 sm:px-4 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 active:scale-95 text-white rounded-xl sm:rounded-2xl font-bold text-sm sm:text-base transition-all flex items-center justify-center gap-2 shadow-lg hover:shadow-xl"
               >
-                <FaCheckCircle size={18} /> Accept Ride
+                <FaCheckCircle size={16} /> Accept Ride
               </button>
             </div>
           </div>
