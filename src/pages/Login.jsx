@@ -12,6 +12,8 @@ const Login = () => {
     password: "",
   });
   const [error, setError] = useState("");
+  const [errorData, setErrorData] = useState(null);
+  const [isRejected, setIsRejected] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
   const { setLoginData } = useAuth();
@@ -22,6 +24,7 @@ const Login = () => {
   const handleChange = (e) => {
     setCredentials((prev) => ({ ...prev, [e.target.name]: e.target.value }));
     setError("");
+    setIsRejected(false);
   };
 
   const handleSubmit = async (e) => {
@@ -50,13 +53,20 @@ const Login = () => {
       setLoginData(loginPayload);
       navigate("/dashboard", { replace: true });
     } catch (err) {
-      console.error("Login Error:", err);
-      setError(
-        err.response?.data?.message || 
-        err.response?.data?.error || 
-        err.message || 
-        "Login failed. Please check your credentials."
-      );
+      const respData = err.response?.data;
+      const errorMessage =
+        respData?.message ||
+        respData?.error ||
+        err.message ||
+        "Login failed. Please check your credentials.";
+
+      setError(errorMessage);
+      setErrorData(respData);
+
+      // Check if driver was rejected to show resubmit button
+      if (errorMessage.toLowerCase().includes("rejected")) {
+        setIsRejected(true);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -104,15 +114,34 @@ const Login = () => {
 
         {/* Error Box */}
         {error && (
-          <div
-            className="mb-4 p-3 rounded-lg text-center text-sm"
-            style={{
-              backgroundColor: themeColors.danger + "15",
-              color: themeColors.danger,
-              border: `1px solid ${themeColors.danger}30`,
-            }}
-          >
-            {error}
+          <div className="mb-4">
+            <div
+              className={`p-3 ${isRejected ? 'rounded-t-lg' : 'rounded-lg'} text-center text-sm`}
+              style={{
+                backgroundColor: themeColors.danger + "15",
+                color: themeColors.danger,
+                border: `1px solid ${themeColors.danger}30`,
+              }}
+            >
+              {error}
+            </div>
+            {isRejected && (
+              <button
+                onClick={() => navigate("/driver/register", { 
+                  state: { 
+                    email: credentials.email,
+                    prefillData: errorData?.driver 
+                  } 
+                })}
+                className="w-full p-2.5 rounded-b-lg text-xs font-bold transition-all hover:brightness-95 flex items-center justify-center gap-2"
+                style={{
+                  backgroundColor: themeColors.primary,
+                  color: themeColors.onPrimary,
+                }}
+              >
+                📝 Edit & Resubmit Documents
+              </button>
+            )}
           </div>
         )}
 

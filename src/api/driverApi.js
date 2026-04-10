@@ -120,5 +120,11 @@ export const driverService = {
   getCarCategories: async () => {
     const response = await driverApi.get('/car-categories/active');
     return response.data;
+  },
+  resubmitDocuments: async (formData) => {
+    const response = await driverApi.post('/drivers/resubmit', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+    return response.data;
   }
 };
