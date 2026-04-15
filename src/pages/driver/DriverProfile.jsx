@@ -8,7 +8,7 @@ import {
   FaUser, FaCar, FaPhone, FaEnvelope, FaIdCard, FaCamera,
   FaSave, FaArrowLeft, FaMapMarkerAlt, FaBuilding, FaTag,
   FaPalette, FaCalendarAlt, FaCheckCircle, FaShieldAlt,
-  FaTachometerAlt, FaStar, FaMoneyBillWave
+  FaTachometerAlt, FaStar, FaMoneyBillWave, FaFileAlt
 } from 'react-icons/fa';
 import {
   User, Phone, Mail, MapPin, Navigation, Award,

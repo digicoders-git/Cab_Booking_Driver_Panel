@@ -42,11 +42,13 @@ const DashboardLayout = () => {
   useEffect(() => {
     const fetchDriverProfile = async () => {
       try {
+        console.log('📋 Fetching driver profile...');
         const res = await driverService.getProfile();
-        setDriverProfile(res?.driver || res);
+        const driver = res?.driver || res;
+        console.log('📋 Driver profile fetched:', driver);
+        setDriverProfile(driver);
 
         // Check if car is assigned - Sirf GADI ke fields check karo (Driver ID nahi!)
-        const driver = res?.driver || res;
         const car = driver?.carDetails || driver?.vehicleDetails || null;
 
         const hasCarAssigned =
@@ -61,12 +63,15 @@ const DashboardLayout = () => {
           car?.model ||
           car?.vehicleModel;
 
-        console.log('🚗 DashboardLayout - Final Car Check:', { hasCarAssigned, driver });
+        console.log('🚗 DashboardLayout - Final Car Check:', { hasCarAssigned, carFields: { carId: driver?.carId, carNumber: driver?.carNumber, carModel: driver?.carModel, carDetailsId: car?._id } });
 
-        if (hasCarAssigned) {
-          setShowNoCarModal(false);
+        // Sirf modal show karo agar car nahi hai
+        if (!hasCarAssigned) {
+          console.log('❌ No car assigned - will show modal on ride request');
+          setShowNoCarModal(false); // Don't show immediately, show only on ride request
         } else {
-          setShowNoCarModal(true);
+          console.log('✅ Car assigned - modal won\'t show');
+          setShowNoCarModal(false);
         }
       } catch (err) {
         console.error('Failed to fetch driver profile:', err);
@@ -233,16 +238,69 @@ const DashboardLayout = () => {
 
     socket.on('new_ride_request', (data) => {
       console.log('🚗 new_ride_request received:', data);
+      console.log('🚗 Current driverProfile state:', driverProfile);
 
-      // ✅ NEW: Check if driver has car assigned
-      const hasCar = driverProfile?.carId || driverProfile?.carDetails?._id || driverProfile?.carNumber || driverProfile?.assignedCar;
+      // ✅ IMPROVED: Check if driver has car assigned - Multiple checks
+      if (!driverProfile) {
+        console.log('⚠️ driverProfile not loaded yet, fetching...');
+        // Profile abhi load nahi hua, fetch karo
+        driverService.getProfile().then(res => {
+          const driver = res?.driver || res;
+          setDriverProfile(driver);
+          
+          const hasCar = 
+            driver?.carId || 
+            driver?.carDetails?._id || 
+            driver?.carNumber || 
+            driver?.assignedCar ||
+            driver?.vehicleDetails?._id ||
+            driver?.vehicleNumber ||
+            driver?.carModel ||
+            driver?.carBrand;
+
+          console.log('🚗 hasCar result (after fetch):', hasCar);
+
+          if (!hasCar) {
+            console.log('❌ No car assigned - showing modal');
+            setShowNoCarModal(true);
+            toast.error('🚗 Aapke paas gadi assign nahi hai');
+            return;
+          }
+
+          console.log('✅ Car assigned - showing ride modal');
+          setRideRequest(data);
+          setShowRideModal(true);
+          toast.success('🚗 New Ride Request! Tap to view details', { duration: 5000 });
+        }).catch(err => {
+          console.error('Failed to fetch profile:', err);
+          toast.error('Failed to load profile');
+        });
+        return;
+      }
+
+      // Profile already loaded - check car
+      const hasCar = 
+        driverProfile?.carId || 
+        driverProfile?.carDetails?._id || 
+        driverProfile?.carNumber || 
+        driverProfile?.assignedCar ||
+        driverProfile?.vehicleDetails?._id ||
+        driverProfile?.vehicleNumber ||
+        driverProfile?.carModel ||
+        driverProfile?.carBrand;
+
+      console.log('🚗 hasCar result:', hasCar);
+      console.log('🚗 Car details:', { carId: driverProfile?.carId, carNumber: driverProfile?.carNumber, carModel: driverProfile?.carModel, carDetailsId: driverProfile?.carDetails?._id });
+
       if (!hasCar) {
+        console.log('❌ No car assigned - showing modal');
         setShowNoCarModal(true);
         toast.error('🚗 Aapke paas gadi assign nahi hai');
         return;
       }
 
-      // Show modal instead of just toast
+      console.log('✅ Car assigned - showing ride modal');
+      // Show ride modal
       setRideRequest(data);
       setShowRideModal(true);
 
@@ -279,7 +337,7 @@ const DashboardLayout = () => {
 
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-  }, [admin?._id, driverProfile?.assignedCar]);
+  }, [admin?._id, driverProfile]);
 
   const handleLogout = useCallback(async () => {
     const driverId = admin?._id || admin?.id;
