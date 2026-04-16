@@ -162,10 +162,12 @@ export const emitLocation = async (driverId, latitude, longitude, address = '', 
 
 export const getSocket = () => socket;
 
-export const disconnectSocket = (driverId) => {
+export const disconnectSocket = (driverId, isLogout = false) => {
   if (socket) {
-    // Browser band → seedha offline, toggle nahi
-    socket.emit('driver_offline', { driverId });
+    // Sirf logout pe offline emit karo, refresh pe nahi
+    if (isLogout) {
+      socket.emit('driver_offline', { driverId });
+    }
     socket.disconnect();
     socket = null;
     currentDriverId = null;

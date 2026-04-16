@@ -328,25 +328,16 @@ const DashboardLayout = () => {
       console.log('📡 ANY Socket event:', eventName, args);
     });
 
-    const handleBeforeUnload = () => {
-      if (!isOnlineRef.current) return;
-      isOnlineRef.current = false;
-      forceOffline(driverId);
-      disconnectSocket(driverId);
-    };
-
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+    // Refresh pe offline mat karo — backend ka grace period handle karega
+    // Sirf tab close / actual navigation pe disconnect karo (logout handle karega)
+    return () => {}; // cleanup only
   }, [admin?._id, driverProfile]);
 
   const handleLogout = useCallback(async () => {
     const driverId = admin?._id || admin?.id;
-
-    isOnlineRef.current = false;     // ✅ Internal ref update
-
-    // ✅ Backend sambhal lega auto-offline, bas socket disconnect karo
-    disconnectSocket(driverId);
-
+    isOnlineRef.current = false;
+    forceOffline(driverId); // Logout pe seedha offline
+    disconnectSocket(driverId, true); // isLogout = true → driver_offline emit hoga
     hasInitialized.current = false;
     logout();
     navigate("/login", { replace: true });

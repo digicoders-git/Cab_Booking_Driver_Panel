@@ -23,6 +23,7 @@ import {
 } from 'react-icons/fa';
 import { DollarSign, Target, Gauge, MapPin, Navigation, PieChart, BarChart3, LineChart } from 'lucide-react';
 import Swal from 'sweetalert2';
+import { requestForToken, onMessageListener } from '../../firebase';
 
 const CHART_COLORS = {
   primary: '#3B82F6', success: '#10B981', warning: '#F59E0B',
@@ -295,6 +296,33 @@ export default function DriverDashboard() {
       });
     };
     attachSocketListeners();
+    
+    // 🔥 FCM Integration: Request token and update backend
+    const setupFCM = async () => {
+      try {
+        const token = await requestForToken();
+        if (token) {
+          console.log('Successfully got FCM token. Updating backend...');
+          await driverService.updateFcmToken(token);
+        }
+      } catch (err) {
+        console.error('FCM Setup Error:', err);
+      }
+    };
+    setupFCM();
+
+    // Listen for foreground messages (har baar aayega)
+    const unsubscribeFCM = onMessageListener((payload) => {
+      console.log('Foreground Message:', payload);
+      toast.info(
+        <div>
+          <p className="font-bold">{payload.notification.title}</p>
+          <p className="text-sm">{payload.notification.body}</p>
+        </div>,
+        { duration: 5000 }
+      );
+      fetchDashboardData();
+    });
 
     return () => {
       console.log('\n🛑 ========== COMPONENT UNMOUNTING ==========');
@@ -302,6 +330,7 @@ export default function DriverDashboard() {
       console.log('🧹 Cleaning up polling interval and socket listeners');
 
       clearInterval(pollInterval);
+      if (unsubscribeFCM) unsubscribeFCM(); // FCM listener cleanup
       const socket = getSocket();
       if (socket) {
         socket.off('new_ride_request');

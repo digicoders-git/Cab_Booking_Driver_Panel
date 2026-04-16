@@ -126,5 +126,9 @@ export const driverService = {
       headers: { 'Content-Type': 'multipart/form-data' }
     });
     return response.data;
+  },
+  updateFcmToken: async (fcmToken) => {
+    const response = await driverApi.put('/drivers/update-fcm-token', { fcmToken });
+    return response.data;
   }
 };
