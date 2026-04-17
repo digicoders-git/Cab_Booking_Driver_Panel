@@ -74,9 +74,8 @@ export default function DriverDashboard() {
   const [wallet, setWallet] = useState(null);
   const [notifications, setNotifications] = useState([]);
   const [selectedChart, setSelectedChart] = useState('all');
-  const [showRideModal, setShowRideModal] = useState(false);
-  const [currentRideRequest, setCurrentRideRequest] = useState(null);
-  const [countdown, setCountdown] = useState(10);
+  // 🧹 Removed local modal states (Now handled globally by DashboardLayout)
+  const [countdown, setCountdown] = useState(11);
 
   const prevRequestIdsRef = useRef(null);
 
@@ -113,54 +112,20 @@ export default function DriverDashboard() {
       console.log('🔍 Previous Request IDs:', prevRequestIdsRef.current ? Array.from(prevRequestIdsRef.current) : 'NULL (First Load)');
 
       setPendingRequests(newRequests);
+      console.log('✅ Polling/Initial Sync: Pending requests updated.');
 
-      // Pehli baar load ho raha hai (prevRequestIdsRef null hai)
       if (prevRequestIdsRef.current === null) {
         console.log('\n🆕 FIRST LOAD DETECTED');
         prevRequestIdsRef.current = new Set(newRequests.map(r => r._id));
         console.log('✅ Initialized prevRequestIdsRef with:', Array.from(prevRequestIdsRef.current));
-
-        // Agar koi pending request hai toh modal dikha do
-        if (newRequests.length > 0) {
-          console.log('\n🚨 SHOWING MODAL FOR FIRST REQUEST');
-          console.log('📦 Request Data:', newRequests[0]);
-          console.log('👤 Passenger:', newRequests[0].booking?.passengerDetails?.name);
-          console.log('📍 Pickup:', newRequests[0].booking?.pickup?.address?.split(',')[0]);
-          console.log('💰 Fare:', newRequests[0].booking?.fareEstimate);
-
-          setCurrentRideRequest(newRequests[0]);
-          setShowRideModal(true);
-          console.log('✅ Modal state updated: showRideModal = true');
-        } else {
-          console.log('ℹ️ No pending requests on first load');
-        }
       } else {
-        // Subsequent loads - check for new requests
         console.log('\n🔄 SUBSEQUENT LOAD - Checking for new requests');
-        let foundNewRequest = false;
-
         newRequests.forEach((req) => {
           if (!prevRequestIdsRef.current.has(req._id)) {
             console.log('\n🆕 NEW REQUEST DETECTED!');
-            console.log('🆔 Request ID:', req._id);
-            console.log('📦 Request Data:', req);
-            console.log('👤 Passenger:', req.booking?.passengerDetails?.name);
-            console.log('📍 Pickup:', req.booking?.pickup?.address?.split(',')[0]);
-            console.log('💰 Fare:', req.booking?.fareEstimate);
-
-            const remaining = Math.max(0, Math.round(((req.expiresAt || (new Date(req.createdAt).getTime() + 10000)) - Date.now()) / 1000));
-            setCurrentRideRequest(req);
-            setShowRideModal(true);
-            setCountdown(remaining); // Sync with backend time
             prevRequestIdsRef.current.add(req._id);
-            foundNewRequest = true;
-            console.log('✅ Modal state updated: showRideModal = true');
           }
         });
-
-        if (!foundNewRequest) {
-          console.log('ℹ️ No new requests found');
-        }
       }
 
       console.log('\n📊 Final prevRequestIdsRef:', Array.from(prevRequestIdsRef.current));
@@ -206,33 +171,9 @@ export default function DriverDashboard() {
           newRequests.forEach((req) => {
             if (!prevRequestIdsRef.current.has(req._id)) {
               console.log('\n🆕 NEW REQUEST FROM POLLING!');
-              console.log('🆔 Request ID:', req._id);
-              console.log('📦 Request Data:', req);
-              console.log('👤 Passenger:', req.booking?.passengerDetails?.name);
-              console.log('📍 Pickup:', req.booking?.pickup?.address?.split(',')[0]);
-              console.log('💰 Fare:', req.booking?.fareEstimate);
-
-              const remaining = Math.max(0, Math.round(((req.expiresAt || (new Date(req.createdAt).getTime() + 10000)) - Date.now()) / 1000));
-              setCurrentRideRequest(req);
-              setShowRideModal(true);
-              setCountdown(remaining); // Sync from polling
               prevRequestIdsRef.current.add(req._id);
               foundNew = true;
-              console.log('✅ Modal triggered from polling');
             }
-          });
-
-          // SYNC CHECK: Agar current request list se gayab ho gayi hai, toh modal close kar do
-          setCurrentRideRequest(prev => {
-            if (prev) {
-              const stillActive = newRequests.find(r => r._id === prev._id);
-              if (!stillActive) {
-                console.log('⚠️ CURRENT REQUEST NO LONGER PENDING - Closing Modal');
-                setShowRideModal(false);
-                return null;
-              }
-            }
-            return prev;
           });
 
           if (!foundNew) {
@@ -259,14 +200,8 @@ export default function DriverDashboard() {
       console.log('✅ Socket connected, attaching event listeners');
 
       socket.on('new_ride_request', (data) => {
-        console.log('\n🔔 ========== SOCKET EVENT: new_ride_request ==========');
-        console.log('⏰ Event Time:', new Date().toLocaleTimeString());
-        console.log('📦 Event Data:', data);
-        console.log('🔄 Triggering fetchDashboardData...');
-        const remaining = Math.max(0, Math.round((data.expiresAt - Date.now()) / 1000));
-        setCountdown(remaining); // Sync from socket event
+        console.log('🔔 New Ride Received - Refreshing Dashboard data');
         fetchDashboardData();
-        console.log('========================================\n');
       });
 
       socket.on('ride_status_update', (data) => {
@@ -284,8 +219,6 @@ export default function DriverDashboard() {
         
         setCurrentRideRequest(prev => {
           if (prev && prev._id === data.requestId) {
-            console.log('🚫 Closing Modal due to Timeout');
-            setShowRideModal(false);
             return null;
           }
           return prev;
@@ -311,17 +244,42 @@ export default function DriverDashboard() {
     };
     setupFCM();
 
-    // Listen for foreground messages (har baar aayega)
-    const unsubscribeFCM = onMessageListener((payload) => {
+    // Listen for foreground messages (Uniform approach: Always show system notification with buttons)
+    const unsubscribeFCM = onMessageListener(async (payload) => {
       console.log('Foreground Message:', payload);
-      toast.info(
-        <div>
-          <p className="font-bold">{payload.notification.title}</p>
-          <p className="text-sm">{payload.notification.body}</p>
-        </div>,
-        { duration: 5000 }
-      );
+      
+      // 1. Refresh dashboard data (Modal update)
       fetchDashboardData();
+
+      // 2. 🎯 DATA-ONLY: Read from payload.data
+      const title = payload.data?.title || 'New Ride Request';
+      const body = payload.data?.body || 'Tap to view details';
+
+      // 3. Show System Notification even in foreground (so we get buttons)
+      if ('serviceWorker' in navigator) {
+        const registration = await navigator.serviceWorker.ready;
+        registration.showNotification(title, {
+          body: body,
+          icon: '/logo.png',
+          badge: '/logo.png',
+          tag: payload.data?.bookingId || 'new-ride',
+          renotify: true,
+          vibrate: [200, 100, 200],
+          data: payload.data,
+          actions: payload.data?.type === "NEW_RIDE_REQUEST" ? [
+            {
+              action: 'accept',
+              title: '🚕 ACCEPT RIDE',
+              icon: '/logo.png'
+            },
+            {
+              action: 'reject',
+              title: '❌ IGNORE',
+              icon: '/logo.png'
+            }
+          ] : [] 
+        });
+      }
     });
 
     return () => {
@@ -331,32 +289,19 @@ export default function DriverDashboard() {
 
       clearInterval(pollInterval);
       if (unsubscribeFCM) unsubscribeFCM(); // FCM listener cleanup
-      const socket = getSocket();
-      if (socket) {
-        socket.off('new_ride_request');
-        socket.off('ride_status_update');
-        console.log('✅ Socket listeners removed');
-      }
+      // const socket = getSocket();
+      // if (socket) {
+      //   socket.off('new_ride_request');
+      //   socket.off('ride_status_update');
+      //   console.log('✅ Socket listeners removed from dashboard component');
+      // }
+      console.log('✅ Dashboard cleanup complete');
       console.log('========================================\n');
     };
   }, []);
 
-  useEffect(() => {
-    let timer;
-    if (showRideModal && countdown > 0) {
-      timer = setInterval(() => {
-        setCountdown(prev => {
-          if (prev <= 1) {
-            clearInterval(timer);
-            setShowRideModal(false);
-            return 0;
-          }
-          return prev - 1;
-        });
-      }, 1000);
-    }
-    return () => clearInterval(timer);
-  }, [showRideModal, countdown]);
+  // 🚦 Modal logic shifted to DashboardLayout for Global persistence 🌍
+  // This page now focus on statistics and online status only.
 
   const handleAcceptRide = async (requestId) => {
     try {
@@ -552,152 +497,6 @@ export default function DriverDashboard() {
 
   return (
     <>
-      {/* Ride Request Modal */}
-      {showRideModal && currentRideRequest && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4"
-          style={{
-            backgroundColor: 'rgba(0, 0, 0, 0.75)',
-            backdropFilter: 'blur(8px)',
-            WebkitBackdropFilter: 'blur(8px)'
-          }}
-        >
-          <div className="bg-white rounded-[2rem] shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto animate-[slideUp_0.3s_ease-out] border-2 border-gray-100 mx-2">
-            {/* Header */}
-            <div className="bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-700 px-4 sm:px-6 py-4 sm:py-5 relative overflow-hidden">
-              {/* Animated Background Pattern */}
-              <div className="absolute inset-0 opacity-10">
-                <div className="absolute top-0 left-0 w-32 h-32 bg-white rounded-full -translate-x-16 -translate-y-16"></div>
-                <div className="absolute bottom-0 right-0 w-40 h-40 bg-white rounded-full translate-x-20 translate-y-20"></div>
-              </div>
-
-              {/* Countdown Timer Circle */}
-              <div className="absolute top-4 right-4 flex items-center justify-center">
-                <div className="relative w-12 h-12 flex items-center justify-center">
-                  <svg className="w-full h-full transform -rotate-90">
-                    <circle
-                      cx="24"
-                      cy="24"
-                      r="20"
-                      stroke="rgba(255,255,255,0.2)"
-                      strokeWidth="4"
-                      fill="transparent"
-                    />
-                    <circle
-                      cx="24"
-                      cy="24"
-                      r="20"
-                      stroke="white"
-                      strokeWidth="4"
-                      fill="transparent"
-                      strokeDasharray={125.6}
-                      strokeDashoffset={125.6 * (1 - countdown / 10)}
-                      className="transition-all duration-1000 ease-linear"
-                    />
-                  </svg>
-                  <span className="absolute text-white font-black text-sm animate-pulse">
-                    {countdown}
-                  </span>
-                </div>
-              </div>
-
-              <div className="relative flex items-center gap-3 sm:gap-4">
-                <div className="w-12 h-12 sm:w-16 sm:h-16 bg-white rounded-xl sm:rounded-2xl flex items-center justify-center shadow-lg transform hover:scale-110 transition-transform flex-shrink-0">
-                  <FaCar className="text-blue-600 text-xl sm:text-2xl" />
-                </div>
-                <div className="flex-1">
-                  <h2 className="text-lg sm:text-2xl font-bold text-white mb-0.5 sm:mb-1">New Ride Request!</h2>
-                  <p className="text-blue-100 text-[10px] sm:text-sm flex items-center gap-2">
-                    <span className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse"></span>
-                    Respond quickly to accept
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Body */}
-            <div className="p-4 sm:p-6 space-y-4 sm:space-y-5 bg-gradient-to-b from-gray-50 to-white">
-              {/* Passenger Info */}
-              <div className="flex items-center gap-3 sm:gap-4 p-3 sm:p-4 bg-white rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
-                <div className="w-12 h-12 sm:w-16 sm:h-16 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl sm:rounded-2xl flex items-center justify-center text-white font-bold text-lg sm:text-2xl shadow-lg flex-shrink-0">
-                  {currentRideRequest.booking?.passengerDetails?.name?.charAt(0) || 'P'}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="font-bold text-gray-900 text-base sm:text-lg truncate">{currentRideRequest.booking?.passengerDetails?.name || 'Passenger'}</p>
-                  <p className="text-xs text-gray-500 flex items-center gap-2">
-                    <FaPhone className="text-green-600" size={10} />
-                    {currentRideRequest.booking?.passengerDetails?.phone || '—'}
-                  </p>
-                </div>
-              </div>
-
-              {/* Route Info */}
-              <div className="space-y-3">
-                {/* Pickup */}
-                <div className="flex items-start gap-3 p-3 bg-green-50 rounded-xl border border-green-100">
-                  <div className="mt-0.5 p-2.5 bg-green-500 rounded-xl shadow-md">
-                    <Navigation className="text-white" size={18} />
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-xs font-semibold text-green-700 mb-1 uppercase tracking-wide">Pickup Location</p>
-                    <p className="text-sm font-medium text-gray-900 leading-relaxed">{currentRideRequest.booking?.pickup?.address || '—'}</p>
-                  </div>
-                </div>
-
-                {/* Divider with Arrow */}
-                <div className="flex items-center justify-center">
-                  <div className="flex-1 border-t-2 border-dashed border-gray-300"></div>
-                  <div className="px-3 text-gray-400">↓</div>
-                  <div className="flex-1 border-t-2 border-dashed border-gray-300"></div>
-                </div>
-
-                {/* Drop */}
-                <div className="flex items-start gap-3 p-3 bg-red-50 rounded-xl border border-red-100">
-                  <div className="mt-0.5 p-2.5 bg-red-500 rounded-xl shadow-md">
-                    <MapPin className="text-white" size={18} />
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-xs font-semibold text-red-700 mb-1 uppercase tracking-wide">Drop Location</p>
-                    <p className="text-sm font-medium text-gray-900 leading-relaxed">{currentRideRequest.booking?.drop?.address || '—'}</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Fare & Distance Cards */}
-              <div className="grid grid-cols-3 gap-2 sm:gap-3">
-                <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-xl sm:rounded-2xl p-2.5 sm:p-4 text-center shadow-lg transform hover:scale-105 transition-transform flex flex-col justify-center">
-                  <p className="text-xl sm:text-3xl font-bold text-white tracking-tighter italic">₹{currentRideRequest.booking?.fareEstimate || 0}</p>
-                  <p className="text-[9px] sm:text-xs text-green-100 mt-0.5 sm:mt-1 font-medium uppercase tracking-widest">Fare</p>
-                </div>
-                <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl sm:rounded-2xl p-2.5 sm:p-4 text-center shadow-lg transform hover:scale-105 transition-transform flex flex-col justify-center">
-                  <p className="text-xl sm:text-3xl font-bold text-white tracking-tighter">{currentRideRequest.booking?.estimatedDistanceKm || 0}</p>
-                  <p className="text-[9px] sm:text-xs text-blue-100 mt-0.5 sm:mt-1 font-medium uppercase tracking-widest">KM</p>
-                </div>
-                <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl sm:rounded-2xl p-2.5 sm:p-4 text-center shadow-lg transform hover:scale-105 transition-transform flex flex-col justify-center min-w-0">
-                  <p className="text-xs sm:text-lg font-bold text-white leading-tight truncate uppercase tracking-tighter">{currentRideRequest.booking?.rideType || 'Ride'}</p>
-                  <p className="text-[9px] sm:text-xs text-purple-100 mt-0.5 sm:mt-1 font-medium uppercase tracking-widest">Type</p>
-                </div>
-              </div>
-</div>
-
-            {/* Footer Actions */}
-            <div className="px-4 sm:px-6 pb-5 sm:pb-6 pt-1 flex gap-2 sm:gap-3 bg-white">
-              <button
-                onClick={() => handleRejectRide(currentRideRequest._id)}
-                className="flex-1 py-3.5 sm:py-4 px-3 sm:px-4 bg-gray-100 hover:bg-gray-200 active:bg-gray-300 text-gray-700 rounded-xl sm:rounded-2xl font-bold text-sm sm:text-base transition-all flex items-center justify-center gap-2 shadow-sm hover:shadow-md"
-              >
-                <FaBan size={16} /> Reject
-              </button>
-              <button
-                onClick={() => handleAcceptRide(currentRideRequest._id)}
-                className="flex-1 py-3.5 sm:py-4 px-3 sm:px-4 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 active:scale-95 text-white rounded-xl sm:rounded-2xl font-bold text-sm sm:text-base transition-all flex items-center justify-center gap-2 shadow-lg hover:shadow-xl"
-              >
-                <FaCheckCircle size={16} /> Accept Ride
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       <div className="space-y-6 py-6 px-4 sm:px-6 bg-gray-50 min-h-screen">
 

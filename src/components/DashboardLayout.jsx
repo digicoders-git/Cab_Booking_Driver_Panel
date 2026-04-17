@@ -11,15 +11,13 @@ import { connectSocket, disconnectSocket, forceOnline, forceOffline, emitLocatio
 import { driverService } from "../api/driverApi";
 import { toast } from "sonner";
 import RideRequestModal from "./RideRequestModal";
-import NoCarAssignedModal from "./NoCarAssignedModal";
+import { requestForToken, onMessageListener } from "../firebase";
 
 const DashboardLayout = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isDriverOnline, setIsDriverOnline] = useState(false); // Online/Offline state
   const [rideRequest, setRideRequest] = useState(null);
   const [showRideModal, setShowRideModal] = useState(false);
-  const [showNoCarModal, setShowNoCarModal] = useState(false); // ✅ NEW
-  const [driverProfile, setDriverProfile] = useState(null); // ✅ NEW
   const { admin, logout } = useAuth();
   const { themeColors, toggleTheme, palette, changePalette } = useTheme();
   const { currentFont, corporateFonts, changeFont } = useFont();
@@ -38,50 +36,7 @@ const DashboardLayout = () => {
   const toggleSidebar = useCallback(() => setSidebarOpen((prev) => !prev), []);
   const closeSidebar = useCallback(() => setSidebarOpen(false), []);
 
-  // ✅ NEW: Fetch driver profile to check car assignment
-  useEffect(() => {
-    const fetchDriverProfile = async () => {
-      try {
-        console.log('📋 Fetching driver profile...');
-        const res = await driverService.getProfile();
-        const driver = res?.driver || res;
-        console.log('📋 Driver profile fetched:', driver);
-        setDriverProfile(driver);
 
-        // Check if car is assigned - Sirf GADI ke fields check karo (Driver ID nahi!)
-        const car = driver?.carDetails || driver?.vehicleDetails || null;
-
-        const hasCarAssigned =
-          driver?.carId ||
-          driver?.assignedCar ||
-          driver?.carNumber ||
-          driver?.carModel ||
-          car?.carNumber ||
-          car?.carModel ||
-          car?._id || // Car ki apni ID (Nested)
-          car?.vehicleNumber ||
-          car?.model ||
-          car?.vehicleModel;
-
-        console.log('🚗 DashboardLayout - Final Car Check:', { hasCarAssigned, carFields: { carId: driver?.carId, carNumber: driver?.carNumber, carModel: driver?.carModel, carDetailsId: car?._id } });
-
-        // Sirf modal show karo agar car nahi hai
-        if (!hasCarAssigned) {
-          console.log('❌ No car assigned - will show modal on ride request');
-          setShowNoCarModal(false); // Don't show immediately, show only on ride request
-        } else {
-          console.log('✅ Car assigned - modal won\'t show');
-          setShowNoCarModal(false);
-        }
-      } catch (err) {
-        console.error('Failed to fetch driver profile:', err);
-      }
-    };
-
-    if (admin?._id) {
-      fetchDriverProfile();
-    }
-  }, [admin?._id]);
 
   // Google Maps Geocoding
   const getAddressFromCoords = async (lat, lng) => {
@@ -215,123 +170,65 @@ const DashboardLayout = () => {
   useEffect(() => {
     const driverId = admin?._id || admin?.id;
     if (!driverId) return;
-    if (hasInitialized.current) return;
-    hasInitialized.current = true;
-
-    console.log('🔌 Connecting socket for driverId:', driverId);
+    console.log('🔌 Connecting/Getting socket for driverId:', driverId);
     const socket = connectSocket(driverId);
-    console.log('🔌 Socket state after connect:', socket.connected ? 'CONNECTED' : 'CONNECTING...');
 
-    const handleOnline = () => {
-      console.log('🔌 Socket connected, waiting for manual toggle...');
-      // forceOnline(driverId);        // ✅ Backend sambhal lega - Manual toggle ke liye wait karo
-      // goOnlineWithLocation();       // ✅ Driver khud button dabake online hoga
-    };
-
-    if (socket.connected) {
-      console.log('🔌 Socket already connected, NOT calling auto-online');
-      handleOnline();
-    } else {
-      console.log('🔌 Socket not connected yet, waiting for connect event...');
-      socket.once('connect', handleOnline);
-    }
-
-    socket.on('new_ride_request', (data) => {
-      console.log('🚗 new_ride_request received:', data);
-      console.log('🚗 Current driverProfile state:', driverProfile);
-
-      // ✅ IMPROVED: Check if driver has car assigned - Multiple checks
-      if (!driverProfile) {
-        console.log('⚠️ driverProfile not loaded yet, fetching...');
-        // Profile abhi load nahi hua, fetch karo
-        driverService.getProfile().then(res => {
-          const driver = res?.driver || res;
-          setDriverProfile(driver);
-          
-          const hasCar = 
-            driver?.carId || 
-            driver?.carDetails?._id || 
-            driver?.carNumber || 
-            driver?.assignedCar ||
-            driver?.vehicleDetails?._id ||
-            driver?.vehicleNumber ||
-            driver?.carModel ||
-            driver?.carBrand;
-
-          console.log('🚗 hasCar result (after fetch):', hasCar);
-
-          if (!hasCar) {
-            console.log('❌ No car assigned - showing modal');
-            setShowNoCarModal(true);
-            toast.error('🚗 Aapke paas gadi assign nahi hai');
-            return;
-          }
-
-          console.log('✅ Car assigned - showing ride modal');
-          setRideRequest(data);
-          setShowRideModal(true);
-          toast.success('🚗 New Ride Request! Tap to view details', { duration: 5000 });
-        }).catch(err => {
-          console.error('Failed to fetch profile:', err);
-          toast.error('Failed to load profile');
-        });
-        return;
-      }
-
-      // Profile already loaded - check car
-      const hasCar = 
-        driverProfile?.carId || 
-        driverProfile?.carDetails?._id || 
-        driverProfile?.carNumber || 
-        driverProfile?.assignedCar ||
-        driverProfile?.vehicleDetails?._id ||
-        driverProfile?.vehicleNumber ||
-        driverProfile?.carModel ||
-        driverProfile?.carBrand;
-
-      console.log('🚗 hasCar result:', hasCar);
-      console.log('🚗 Car details:', { carId: driverProfile?.carId, carNumber: driverProfile?.carNumber, carModel: driverProfile?.carModel, carDetailsId: driverProfile?.carDetails?._id });
-
-      if (!hasCar) {
-        console.log('❌ No car assigned - showing modal');
-        setShowNoCarModal(true);
-        toast.error('🚗 Aapke paas gadi assign nahi hai');
-        return;
-      }
-
-      console.log('✅ Car assigned - showing ride modal');
-      // Show ride modal
+    const onNewRequest = (data) => {
+      console.log('🚗 [GLOBAL] new_ride_request received:', data);
       setRideRequest(data);
       setShowRideModal(true);
+      toast.success(`🚗 New Ride Request!`, { duration: 5000 });
+    };
 
-      // Also show toast as backup
-      toast.success(
-        `🚗 New Ride Request! Tap to view details`,
-        {
-          duration: 5000,
-          action: {
-            label: 'View',
-            onClick: () => {
-              setShowRideModal(true);
-            }
-          }
+    const onRideTimeout = (data) => {
+      console.log('⏰ [GLOBAL] ride_request_timeout received:', data);
+      setShowRideModal(false);
+      setRideRequest(null);
+    };
+
+    socket.on('new_ride_request', onNewRequest);
+    socket.on('ride_request_timeout', onRideTimeout);
+
+    return () => {
+      // ✅ Specific removal, NOT global socket.off()
+      socket.off('new_ride_request', onNewRequest);
+      socket.off('ride_request_timeout', onRideTimeout);
+      console.log('🔌 Cleaned up Layout listeners specifically');
+    };
+  }, [admin?._id]);
+
+  // --- FCM TOKEN REGISTRATION ---
+  useEffect(() => {
+    const driverId = admin?._id || admin?.id;
+    if (!driverId) return;
+
+    const setupFCM = async () => {
+      try {
+        const token = await requestForToken();
+        if (token) {
+          await driverService.updateFcmToken(token);
+          console.log("🚀 FCM Token synchronized with backend");
         }
-      );
+      } catch (error) {
+        console.error("FCM Registration failed:", error);
+      }
+    };
+
+    setupFCM();
+
+    // Foreground notification listener
+    const unsubscribe = onMessageListener((payload) => {
+        console.log("🔔 Push Notification received in foreground:", payload);
+        // If it's a new ride request, we can handle it or let socket do it
+        // toast.info(payload.notification?.title || "New Message Received");
     });
 
-    socket.on('admin_message', (data) => {
-      toast.info(`📢 Admin: ${data.message}`);
-    });
-
-    // Debug: Saare events log karo
-    socket.onAny((eventName, ...args) => {
-      console.log('📡 ANY Socket event:', eventName, args);
-    });
-
-    // Refresh pe offline mat karo — backend ka grace period handle karega
-    // Sirf tab close / actual navigation pe disconnect karo (logout handle karega)
-    return () => {}; // cleanup only
-  }, [admin?._id, driverProfile]);
+    return () => {
+      if (unsubscribe && typeof unsubscribe === 'function') {
+        unsubscribe();
+      }
+    };
+  }, [admin?._id]);
 
   const handleLogout = useCallback(async () => {
     const driverId = admin?._id || admin?.id;
@@ -343,17 +240,7 @@ const DashboardLayout = () => {
     navigate("/login", { replace: true });
   }, [logout, navigate, admin]);
 
-  // ✅ NEW: Handle contact admin
-  const handleContactAdmin = () => {
-    toast.info('📞 Admin contact details: +91-XXXXXXXXXX');
-    setShowNoCarModal(false);
-  };
 
-  // ✅ NEW: Handle help
-  const handleHelp = () => {
-    navigate('/driver/support');
-    setShowNoCarModal(false);
-  };
 
   return (
     <div
@@ -398,24 +285,35 @@ const DashboardLayout = () => {
             setRideRequest(null);
           }}
           rideData={rideRequest}
-          onAccept={(data) => {
-            console.log('Ride accepted:', data);
-            toast.success('🚗 Ride accepted! Navigate to pickup location.');
-            navigate('/driver/trips');
+          onAccept={async () => {
+            const requestId = rideRequest?.requestId || rideRequest?._id;
+            try {
+              const res = await driverService.respondToRequest(requestId, 'accept');
+              if (res.success) {
+                toast.success('🚗 Ride accepted! Navigate to pickup location.');
+                setShowRideModal(false);
+                const shortId = res.booking?._id?.slice(-8);
+                if (shortId) navigate(`/driver/trip/${shortId}`);
+                else navigate('/driver/trips');
+              }
+            } catch (err) {
+              toast.error(err?.response?.data?.message || 'Failed to accept ride');
+            }
           }}
-          onReject={(data) => {
-            console.log('Ride rejected:', data);
+          onReject={async () => {
+            const requestId = rideRequest?.requestId || rideRequest?._id;
+            try {
+              await driverService.respondToRequest(requestId, 'reject');
+              toast.info('❌ Ride Rejected');
+              setShowRideModal(false);
+            } catch (err) {
+              toast.error('Failed to reject ride');
+            }
           }}
           themeColors={themeColors}
         />
 
-        {/* ✅ NEW: No Car Assigned Modal */}
-        <NoCarAssignedModal
-          isOpen={showNoCarModal}
-          themeColors={themeColors}
-          onContactAdmin={handleContactAdmin}
-          onHelp={handleHelp}
-        />
+
       </div>
     </div>
   );

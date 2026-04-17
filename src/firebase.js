@@ -14,29 +14,32 @@ const firebaseConfig = {
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 
-// Initialize Firebase Cloud Messaging and get a reference to the service
-const messaging = getMessaging(app);
+// Initialize Firebase Cloud Messaging safely
+let messaging = null;
+try {
+  messaging = getMessaging(app);
+} catch (error) {
+  console.warn("FCM not supported in this environment:", error.message);
+}
 
 export const requestForToken = async () => {
+  if (!messaging) return null;
   try {
     const permission = await Notification.requestPermission();
     if (permission === "granted") {
       const token = await getToken(messaging, {
         vapidKey: import.meta.env.VITE_FIREBASE_VAPID_KEY
       });
-      if (token) {
-        console.log("FCM Token obtained successfully.");
-        return token;
-      } else {
-        console.warn("No registration token available. Request permission to generate one.");
-      }
+      return token;
     }
   } catch (error) {
     console.error("An error occurred while retrieving token. ", error);
   }
+  return null;
 };
 
 export const onMessageListener = (callback) => {
+  if (!messaging) return () => {};
   return onMessage(messaging, (payload) => {
     console.log("Foreground Message received: ", payload);
     callback(payload);
