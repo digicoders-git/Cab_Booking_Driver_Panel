@@ -2,12 +2,12 @@ importScripts('https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js');
 importScripts('https://www.gstatic.com/firebasejs/8.10.1/firebase-messaging.js');
 
 firebase.initializeApp({
-  apiKey: "AIzaSyDE-xxxxxxxxxxxx",
+  apiKey: "AIzaSyCGlmY-ior7xqv_-4PiQcs1CoePb7IDM90",
   authDomain: "collegepanel-1027b.firebaseapp.com",
   projectId: "collegepanel-1027b",
-  storageBucket: "collegepanel-1027b.appspot.com",
-  messagingSenderId: "305191062086",
-  appId: "1:305191062086:web:64024844391696df3f27f1"
+  storageBucket: "collegepanel-1027b.firebasestorage.app",
+  messagingSenderId: "335340683871",
+  appId: "1:335340683871:web:2755bd2b336f7c355bd1ea"
 });
 
 const messaging = firebase.messaging();
