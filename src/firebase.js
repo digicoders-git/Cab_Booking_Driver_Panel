@@ -30,10 +30,17 @@ export const requestForToken = async () => {
       const token = await getToken(messaging, {
         vapidKey: import.meta.env.VITE_FIREBASE_VAPID_KEY
       });
-      return token;
+      if (token) {
+        console.log("✅ Success: FCM Token obtained:", token);
+        return token;
+      } else {
+        console.warn("⚠️ Warning: No registration token available. Check VAPID key or Browser support.");
+      }
+    } else {
+      console.warn("❌ Permission Denied: User did not grant notification permissions.");
     }
   } catch (error) {
-    console.error("An error occurred while retrieving token. ", error);
+    console.error("🔥 Firebase Error (Retrieving Token):", error);
   }
   return null;
 };

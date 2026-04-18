@@ -22,7 +22,7 @@ self.addEventListener('activate', (event) => {
 });
 
 messaging.onBackgroundMessage((payload) => {
-  console.log("[firebase-messaging-sw.js] Received background message ", payload);
+  console.log('[firebase-messaging-sw.js] Background Message received: ', payload);
   
   const title = payload.notification?.title || payload.data?.title || "KwikCab Bulletin";
   const body = payload.notification?.body || payload.data?.body || "New update available on your dashboard.";
