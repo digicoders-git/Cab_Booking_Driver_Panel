@@ -60,21 +60,37 @@ const DashboardLayout = () => {
 
   // Online karo with GPS/IP location
   const goOnlineWithLocation = useCallback(async () => {
-    if (isOnlineRef.current) return; // Already online hai — dobara mat karo
-    isOnlineRef.current = true; // Pehle set karo — race condition rokne ke liye
-    setIsDriverOnline(true); // UI update
+    // 1. Check Notification Permission first
+    if (Notification.permission === 'denied' || Notification.permission === 'default') {
+      toast.error('🔔 Please allow Notifications to receive ride requests!');
+      // We don't block going online, but we warn the driver
+    }
+
+    if (isOnlineRef.current) return;
+    isOnlineRef.current = true;
+    setIsDriverOnline(true);
 
     const driverId = admin?._id || admin?.id;
-
-    // Socket se online karo (database update backend karega)
     forceOnline(driverId);
 
     try {
+      // 2. Check for Geolocation Permission explicitly
+      if (!navigator.geolocation) {
+        toast.error('❌ Your browser does not support GPS tracking.');
+        throw new Error('No GPS');
+      }
+
       const pos = await new Promise((res, rej) =>
-        navigator.geolocation?.getCurrentPosition(res, rej, {
-          enableHighAccuracy: true, timeout: 8000, maximumAge: 0
+        navigator.geolocation.getCurrentPosition(res, rej, {
+          enableHighAccuracy: true, timeout: 5000, maximumAge: 0
         })
-      ).catch(async () => {
+      ).catch(async (err) => {
+        if (err.code === 1) { // PERMISSION_DENIED
+          toast.error('📍 Location Denied! Please allow GPS access in browser settings.', {
+            duration: 6000,
+            style: { border: '2px solid #EF4444' }
+          });
+        }
         const ipLoc = await getLocationFromIP();
         return ipLoc ? { coords: { latitude: ipLoc.latitude, longitude: ipLoc.longitude }, ipAddress: ipLoc.address } : null;
       });
@@ -118,8 +134,8 @@ const DashboardLayout = () => {
 
     let lastLat = null;
     let lastLng = null;
-    const MIN_DISTANCE_METERS = 2; // Only update if driver moves at least 2 meters
-    const LOCATION_INTERVAL = 3000; // Update every 3 seconds (3000ms)
+    const MIN_DISTANCE_METERS = 1; // Only update if driver moves at least 1 meter
+    const LOCATION_INTERVAL = 1000; // Update every 1 second (1000ms)
     let lastUpdateTime = 0;
 
     // GPS loaction ko Wathch  kar rha ahi 

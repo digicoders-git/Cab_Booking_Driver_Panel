@@ -217,13 +217,6 @@ export default function DriverDashboard() {
         console.log('\n⏰ ========== SOCKET EVENT: ride_request_timeout ==========');
         console.log('📦 Timeout Data:', data);
         
-        setCurrentRideRequest(prev => {
-          if (prev && prev._id === data.requestId) {
-            return null;
-          }
-          return prev;
-        });
-        
         fetchDashboardData();
         console.log('========================================\n');
       });

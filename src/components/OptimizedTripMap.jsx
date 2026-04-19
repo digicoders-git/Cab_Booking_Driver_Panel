@@ -62,7 +62,7 @@ const OptimizedTripMap = ({
     throttle(async (driverPos) => {
       if (!mapInstanceRef.current || !window.google?.maps) return;
       const now = Date.now();
-      if (now - lastRouteUpdateRef.current < 15000) return; // 15s throttle for directions
+      if (now - lastRouteUpdateRef.current < 8000) return; // Reduced to 8s for faster response
       lastRouteUpdateRef.current = now;
 
       try {
@@ -100,37 +100,50 @@ const OptimizedTripMap = ({
         setDistance(`${dist.toFixed(1)} km`);
         setDuration('~' + Math.round(dist * 3) + ' min');
       }
-    }, 15000),
+    }, 8000), // Updated throttle
     [destination, isOngoing]
   );
 
-  // Stable Throttled driver marker update - WITH CAR IMAGE
+  // Stable Throttled driver marker update - WITH CAR IMAGE & ROTATION
   const updateDriverMarker = useCallback(
-    throttle((location) => {
+    throttle((location, heading) => {
       if (!mapInstanceRef.current || !window.google?.maps) return;
       try {
+        const rotation = heading || 0;
         if (driverMarkerRef.current) {
+          // Smoothly set position and rotation
           driverMarkerRef.current.setPosition(location);
+          if (typeof driverMarkerRef.current.setOptions === 'function') {
+            driverMarkerRef.current.setOptions({ rotation: rotation });
+          }
         } else {
           // Pass car image URL to createCarMarker
           driverMarkerRef.current = new window.google.maps.Marker({
             position: location,
             map: mapInstanceRef.current,
             icon: createCarMarker('#2563EB', carImageUrl),
+            rotation: rotation,
             zIndex: 1000
           });
         }
-        mapInstanceRef.current.panTo(location);
+        
+        // Only pan if driver is near the edge or moving significantly
+        const center = mapInstanceRef.current.getCenter();
+        const distFromCenter = calculateDistance(center.lat(), center.lng(), location.lat, location.lng);
+        if (distFromCenter > 0.05) {
+          mapInstanceRef.current.panTo(location);
+        }
         
         const lastPos = lastPosRef.current;
-        if (!lastPos || calculateDistance(lastPos.lat, lastPos.lng, location.lat, location.lng) > 0.05) {
+        // Sensitivity increased to 20 meters (0.02 km)
+        if (!lastPos || calculateDistance(lastPos.lat, lastPos.lng, location.lat, location.lng) > 0.02) {
           updateRoute(location);
           lastPosRef.current = location;
         }
       } catch (e) {
         console.warn('Marker update error:', e);
       }
-    }, 4000),
+    }, 500), // Speed up to 500ms for Uber-like smoothness
     [updateRoute, carImageUrl]
   );
 
@@ -140,7 +153,7 @@ const OptimizedTripMap = ({
     try {
       await loadGoogleMaps();
       const map = new window.google.maps.Map(mapRef.current, {
-        zoom: 15,
+        zoom: 17, // Closer zoom for better navigation feel
         center: pickup,
         styles: optimizedMapStyles,
         mapTypeControl: false,
@@ -181,9 +194,10 @@ const OptimizedTripMap = ({
     
     watchIdRef.current = navigator.geolocation.watchPosition(
       (position) => {
-        const location = { lat: position.coords.latitude, lng: position.coords.longitude };
+        const { latitude, longitude, heading } = position.coords;
+        const location = { lat: latitude, lng: longitude };
         setDriverLocation(location);
-        updateDriverMarker(location);
+        updateDriverMarker(location, heading);
       },
       (error) => {
         const now = Date.now();
@@ -195,12 +209,28 @@ const OptimizedTripMap = ({
       },
       { enableHighAccuracy: true, timeout: 30000, maximumAge: 10000 }
     );
+
+    // 🎯 NEW: Real-time Rotation (Compass) Listener
+    const handleOrientation = (event) => {
+      // heading from GPS is more accurate for movement, but compass is better for stationary rotation
+      if (driverMarkerRef.current && event.alpha !== null) {
+        const compassHeading = 360 - event.alpha; // Adjust based on device orientation
+        if (typeof driverMarkerRef.current.setOptions === 'function') {
+          driverMarkerRef.current.setOptions({ rotation: compassHeading });
+        }
+      }
+    };
+
+    if (window.DeviceOrientationEvent) {
+      window.addEventListener('deviceorientation', handleOrientation, true);
+    }
     
     return () => { 
       if (watchIdRef.current) {
         navigator.geolocation.clearWatch(watchIdRef.current);
         watchIdRef.current = null;
       }
+      window.removeEventListener('deviceorientation', handleOrientation, true);
     };
   }, [mapLoaded, updateDriverMarker]);
 
