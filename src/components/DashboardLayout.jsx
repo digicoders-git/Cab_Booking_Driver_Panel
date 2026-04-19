@@ -58,56 +58,63 @@ const DashboardLayout = () => {
     return null;
   };
 
-  // Online karo with GPS/IP location
+  // Online karo with GPS/IP location - STRICT GPS REQUIREMENT
   const goOnlineWithLocation = useCallback(async () => {
     // 1. Check Notification Permission first
-    if (Notification.permission === 'denied' || Notification.permission === 'default') {
-      toast.error('🔔 Please allow Notifications to receive ride requests!');
-      // We don't block going online, but we warn the driver
+    if (Notification.permission === 'denied') {
+      toast.error('🔔 Notification access is BLOCKED. Please enable it to see ride requests!');
     }
 
-    if (isOnlineRef.current) return;
-    isOnlineRef.current = true;
-    setIsDriverOnline(true);
-
     const driverId = admin?._id || admin?.id;
-    forceOnline(driverId);
 
     try {
-      // 2. Check for Geolocation Permission explicitly
+      // 2. Geolocation support check
       if (!navigator.geolocation) {
-        toast.error('❌ Your browser does not support GPS tracking.');
-        throw new Error('No GPS');
+        toast.error('❌ Your device does not support GPS.');
+        return;
       }
 
+      // 3. Pehle location lene ki koshish karo, ONLINE karne se pehle
+      toast.loading('📍 Verifying location...', { id: 'loc-check' });
+      
       const pos = await new Promise((res, rej) =>
         navigator.geolocation.getCurrentPosition(res, rej, {
-          enableHighAccuracy: true, timeout: 5000, maximumAge: 0
+          enableHighAccuracy: true, timeout: 10000, maximumAge: 0
         })
-      ).catch(async (err) => {
-        if (err.code === 1) { // PERMISSION_DENIED
-          toast.error('📍 Location Denied! Please allow GPS access in browser settings.', {
-            duration: 6000,
-            style: { border: '2px solid #EF4444' }
-          });
-        }
-        const ipLoc = await getLocationFromIP();
-        return ipLoc ? { coords: { latitude: ipLoc.latitude, longitude: ipLoc.longitude }, ipAddress: ipLoc.address } : null;
+      ).catch((err) => {
+        throw err; // Fail explicitly
       });
 
-      const latitude = pos?.coords?.latitude || null;
-      const longitude = pos?.coords?.longitude || null;
+      const latitude = pos.coords.latitude;
+      const longitude = pos.coords.longitude;
 
       if (latitude && longitude) {
-        const address = pos?.ipAddress || await getAddressFromCoords(latitude, longitude);
+        // Success: Ab online karo
+        isOnlineRef.current = true;
+        setIsDriverOnline(true);
+        forceOnline(driverId);
+
+        const address = await getAddressFromCoords(latitude, longitude);
         await driverService.updateLocation(latitude, longitude, address);
         lastAddressUpdateRef.current = Date.now();
+        
+        toast.dismiss('loc-check');
         toast.success(`🟢 Online! 📍 ${address.split(',')[0]}`);
-      } else {
-        toast.success('🟢 You are now Online!');
       }
-    } catch (e) {
-      toast.success('🟢 You are now Online!');
+    } catch (err) {
+      toast.dismiss('loc-check');
+      isOnlineRef.current = false;
+      setIsDriverOnline(false); // UI revert karo
+      forceOffline(driverId); // Safety ke liye offline rakho
+
+      if (err.code === 1) { // PERMISSION_DENIED
+        toast.error('🚫 GPS Denied! You MUST allow location access to go online.', {
+          duration: 6000,
+          style: { border: '2px solid #EF4444' }
+        });
+      } else {
+        toast.error('📡 Could not get your location. Please check your GPS signal!');
+      }
     }
   }, [admin?._id]);
 
