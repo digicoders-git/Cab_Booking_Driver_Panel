@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useOutletContext, useNavigate } from 'react-router-dom';
 import { driverService } from '../../api/driverApi';
 import { useAuth } from '../../context/AuthContext';
 import { toast } from 'sonner';
@@ -64,6 +64,7 @@ import { getSocket } from '../../socket/socket';
 
 export default function DriverDashboard() {
   const navigate = useNavigate();
+  const { isOnline: contextOnline } = useOutletContext(); // Get real-time status from Layout
   const { admin: driver } = useAuth();
 
   const [profile, setProfile] = useState(null);
@@ -506,9 +507,9 @@ export default function DriverDashboard() {
                 <div className="w-px h-3 bg-gray-300" />
                 <span className="text-sm text-gray-500">{profile?.carModel || profile?.carDetails?.carModel || 'Car not assigned'}</span>
                 <div className="w-px h-3 bg-gray-300" />
-                {/* Online Status Badge */}
-                <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${profile?.isOnline ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                  {profile?.isOnline ? '🟢 Online' : '🔴 Offline'}
+                {/* Online Status Badge - Real-time from context */}
+                <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${(contextOnline ?? profile?.isOnline) ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                  {(contextOnline ?? profile?.isOnline) ? '🟢 Online' : '🔴 Offline'}
                 </span>
               </div>
             </div>

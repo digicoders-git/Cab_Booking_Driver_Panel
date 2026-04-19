@@ -79,7 +79,7 @@ const DashboardLayout = () => {
       
       const pos = await new Promise((res, rej) =>
         navigator.geolocation.getCurrentPosition(res, rej, {
-          enableHighAccuracy: true, timeout: 10000, maximumAge: 0
+          enableHighAccuracy: true, timeout: 12000, maximumAge: 5000 // Increased timeout and allowed cache
         })
       ).catch((err) => {
         throw err; // Fail explicitly
@@ -189,10 +189,27 @@ const DashboardLayout = () => {
     return () => navigator.geolocation.clearWatch(watchId);
   }, [admin?._id]);
 
-  // Socket + Online/Offline — SIRF EK BAAR chalega
+  // Socket + Online/Offline + Sync Status — SIRF EK BAAR chalega
   useEffect(() => {
     const driverId = admin?._id || admin?.id;
     if (!driverId) return;
+
+    // 🔄 SYNC STATUS ON REFRESH: Fetch actual status from DB
+    const syncStatus = async () => {
+      try {
+        const res = await driverService.getProfile();
+        if (res?.driver?.isOnline) {
+          console.log('🔄 Sync: Driver is already ONLINE in DB');
+          setIsDriverOnline(true);
+          isOnlineRef.current = true;
+          // Re-connect location etc if needed
+        }
+      } catch (err) {
+        console.error('Failed to sync status:', err);
+      }
+    };
+    syncStatus();
+
     console.log('🔌 Connecting/Getting socket for driverId:', driverId);
     const socket = connectSocket(driverId);
 
@@ -297,7 +314,7 @@ const DashboardLayout = () => {
           onToggleOnline={handleToggleOnline}
         />
         <main className="flex-1 overflow-y-auto p-2 sm:p-4 md:p-6" style={{ backgroundColor: themeColors.background }}>
-          <Outlet />
+          <Outlet context={{ isOnline: isDriverOnline, toggleOnline: handleToggleOnline }} />
         </main>
 
         {/* Ride Request Modal */}
