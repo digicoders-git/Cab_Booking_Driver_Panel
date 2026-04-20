@@ -194,21 +194,41 @@ const DashboardLayout = () => {
     const driverId = admin?._id || admin?.id;
     if (!driverId) return;
 
-    // 🔄 SYNC STATUS ON REFRESH: Fetch actual status from DB
+    // 🔄 SYNC STATUS ON REFRESH & FOREGROUND: Fetch actual status from DB
     const syncStatus = async () => {
       try {
+        console.log('📡 Syncing driver status with DB...');
         const res = await driverService.getProfile();
-        if (res?.driver?.isOnline) {
-          console.log('🔄 Sync: Driver is already ONLINE in DB');
+        const onlineInDB = res?.driver?.isOnline;
+        
+        if (onlineInDB) {
+          console.log('🔄 Sync: Driver is ONLINE in DB. Updating UI...');
           setIsDriverOnline(true);
           isOnlineRef.current = true;
-          // Re-connect location etc if needed
+          // Trigger forceOnline to ensure socket feels "Online" too
+          forceOnline(driverId);
+        } else {
+          console.log('🔄 Sync: Driver is OFFLINE in DB.');
+          setIsDriverOnline(false);
+          isOnlineRef.current = false;
         }
       } catch (err) {
         console.error('Failed to sync status:', err);
       }
     };
+
+    // Run once on mount
     syncStatus();
+
+    // 📱 HANDLE FOREGROUND SINK: Jab background se wapas aaye toh turant check karo
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        console.log('☀️ App came to foreground - triggering status sync');
+        syncStatus();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
 
     console.log('🔌 Connecting/Getting socket for driverId:', driverId);
     const socket = connectSocket(driverId);
@@ -231,6 +251,7 @@ const DashboardLayout = () => {
 
     return () => {
       // ✅ Specific removal, NOT global socket.off()
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
       socket.off('new_ride_request', onNewRequest);
       socket.off('ride_request_timeout', onRideTimeout);
       console.log('🔌 Cleaned up Layout listeners specifically');

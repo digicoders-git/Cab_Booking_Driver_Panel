@@ -7,7 +7,7 @@ import OptimizedTripMap from '../../components/OptimizedTripMap';
 import {
   FaUser, FaPhone, FaMapMarkerAlt, FaRoute, FaClock,
   FaCheckCircle, FaRupeeSign, FaArrowLeft, FaSync,
-  FaPlay, FaStop, FaKey, FaCar, FaTaxi
+  FaPlay, FaStop, FaKey, FaCar, FaTaxi, FaTimesCircle
 } from 'react-icons/fa';
 import { Navigation, MapPin } from 'lucide-react';
 import { getSocket } from '../../socket/socket';
@@ -21,6 +21,7 @@ export default function DriverTripDetail() {
   const [paymentMethod, setPaymentMethod] = useState('Cash');
   const [actionLoading, setActionLoading] = useState(false);
   const [bookingId, setBookingId] = useState(null);
+  const [waitingSeconds, setWaitingSeconds] = useState(0);
   const [liveLocation, setLiveLocation] = useState(null);
 
   // Handle location updates from OptimizedTripMap
@@ -93,6 +94,45 @@ export default function DriverTripDetail() {
     };
   }, [fetchTrip, trip, shortId, navigate]);
 
+  // ⏱️ Waiting Timer Logic
+  useEffect(() => {
+    let interval;
+    if (trip?.tripData?.arrivedAt && trip?.bookingStatus === 'Accepted') {
+      const start = new Date(trip.tripData.arrivedAt).getTime();
+      
+      interval = setInterval(() => {
+        const now = Date.now();
+        const diffInSecs = Math.floor((now - start) / 1000);
+        setWaitingSeconds(diffInSecs > 0 ? diffInSecs : 0);
+      }, 1000);
+    } else {
+      setWaitingSeconds(0);
+    }
+    return () => clearInterval(interval);
+  }, [trip?.tripData?.arrivedAt, trip?.bookingStatus]);
+
+  const formatTime = (totalSeconds) => {
+    const mins = Math.floor(totalSeconds / 60);
+    const secs = totalSeconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  // Mark Arrived
+  const handleArrived = async () => {
+    setActionLoading(true);
+    try {
+      const res = await driverService.markArrived(bookingId);
+      if (res.success) {
+        toast.success('📍 Check-in successful! Waiting timer started.');
+        fetchTrip();
+      }
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Failed to check-in');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   // OTP se Trip Start
   const handleStartTrip = async () => {
     const { value: otp } = await Swal.fire({
@@ -125,15 +165,34 @@ export default function DriverTripDetail() {
 
   // Trip End
   const handleEndTrip = async () => {
+    const baseFare = (trip?.fareEstimate || 0) - (trip?.tripData?.waitingCharges || 0);
+    const waitingCharges = trip?.tripData?.waitingCharges || 0;
+    const waitingTime = trip?.tripData?.waitingTimeMin || 0;
+
     const result = await Swal.fire({
       title: '🏁 End Trip?',
       html: `
-        <p class="text-gray-600 mb-4">Final Fare: <strong>₹${trip?.fareEstimate || 0}</strong></p>
-        <div class="flex gap-3 justify-center">
-          <label class="flex items-center gap-2 cursor-pointer">
+        <div class="text-left bg-gray-50 p-4 rounded-xl mb-4 border border-gray-200">
+          <div class="flex justify-between mb-2">
+            <span class="text-gray-500">Ride Fare:</span>
+            <span class="font-semibold text-gray-800">₹${baseFare}</span>
+          </div>
+          ${waitingCharges > 0 ? `
+            <div class="flex justify-between mb-2 text-orange-600">
+              <span>Waiting Fee (${waitingTime} min):</span>
+              <span class="font-bold">+ ₹${waitingCharges}</span>
+            </div>
+          ` : ''}
+          <div class="border-t border-gray-300 my-2 pt-2 flex justify-between">
+            <span class="font-bold text-gray-900">Final Total:</span>
+            <span class="font-bold text-green-600 text-xl">₹${trip?.fareEstimate || 0}</span>
+          </div>
+        </div>
+        <div class="flex gap-4 justify-center mt-4">
+          <label class="flex items-center gap-2 cursor-pointer p-2 border border-gray-200 rounded-lg w-full justify-center">
             <input type="radio" name="payment" value="Cash" checked /> Cash
           </label>
-          <label class="flex items-center gap-2 cursor-pointer">
+          <label class="flex items-center gap-2 cursor-pointer p-2 border border-gray-200 rounded-lg w-full justify-center">
             <input type="radio" name="payment" value="Online" /> Online
           </label>
         </div>
@@ -163,8 +222,36 @@ export default function DriverTripDetail() {
         });
         navigate('/dashboard');
       }
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  // Driver Cancel Trip
+  const handleCancelTrip = async () => {
+    const { value: reason, isConfirmed } = await Swal.fire({
+      title: '🚨 Cancel this Ride?',
+      text: 'Are you sure you want to cancel? This might affect your rating.',
+      input: 'textarea',
+      inputPlaceholder: 'Reason for cancellation (e.g. Traffic, Vehicle issue...)',
+      showCancelButton: true,
+      confirmButtonText: 'Yes, Cancel Ride',
+      confirmButtonColor: '#EF4444',
+      cancelButtonText: 'No, Keep it',
+      cancelButtonColor: '#94A3B8',
+    });
+
+    if (!isConfirmed) return;
+
+    setActionLoading(true);
+    try {
+      const res = await driverService.cancelTrip(bookingId, reason || 'Driver cancelled');
+      if (res.success) {
+        toast.success('🚨 Trip cancelled successfully.');
+        navigate('/dashboard');
+      }
     } catch (err) {
-      toast.error(err?.response?.data?.message || 'Failed to end trip');
+      toast.error(err?.response?.data?.message || 'Failed to cancel trip');
     } finally {
       setActionLoading(false);
     }
@@ -309,19 +396,70 @@ export default function DriverTripDetail() {
 
       {/* Action Buttons */}
       <div className="mx-4 mt-4 mb-8 space-y-3">
-        {/* Start Trip Button */}
+        {/* Arrival & Start Controls */}
         {isAccepted && !isOngoing && !isCompleted && (
-          <button
-            onClick={handleStartTrip}
-            disabled={actionLoading}
-            className="w-full py-4 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-2xl font-bold text-lg flex items-center justify-center gap-3 hover:from-green-700 hover:to-green-800 transition-all shadow-lg disabled:opacity-50"
-          >
-            {actionLoading ? (
-              <div className="animate-spin h-5 w-5 border-2 border-white border-t-transparent rounded-full" />
+          <div className="space-y-3">
+            {!trip?.tripData?.arrivedAt ? (
+              <button
+                onClick={handleArrived}
+                disabled={actionLoading}
+                className="w-full py-4 bg-gradient-to-r from-blue-600 to-indigo-700 text-white rounded-2xl font-bold text-lg flex items-center justify-center gap-3 hover:from-blue-700 hover:to-indigo-800 transition-all shadow-lg disabled:opacity-50"
+              >
+                {actionLoading ? (
+                  <div className="animate-spin h-5 w-5 border-2 border-white border-t-transparent rounded-full" />
+                ) : (
+                  <><Navigation size={18} /> I have Arrived at Pickup</>
+                )}
+              </button>
             ) : (
-              <><FaKey size={18} /> Enter OTP & Start Trip</>
+              <div className="bg-orange-50 border border-orange-200 rounded-2xl p-4 flex flex-col items-center gap-2">
+                <div className="flex items-center gap-2 text-orange-700 font-semibold">
+                  <FaClock className="animate-pulse" /> 
+                  Waiting for Passenger: <span className="text-xl font-mono">{formatTime(waitingSeconds)}</span>
+                </div>
+                <p className="text-xs text-orange-600 text-center">
+                  {waitingSeconds > (trip?.carCategory?.freeWaitingMin || 3) * 60 
+                    ? "⚠️ Chargeable waiting time active" 
+                    : `Free time: ${trip?.carCategory?.freeWaitingMin || 3} min`}
+                </p>
+              </div>
             )}
-          </button>
+
+            <button
+              onClick={handleStartTrip}
+              disabled={actionLoading || !trip?.tripData?.arrivedAt}
+              className={`w-full py-4 text-white rounded-2xl font-bold text-lg flex items-center justify-center gap-3 transition-all shadow-lg disabled:opacity-50 ${
+                !trip?.tripData?.arrivedAt 
+                ? 'bg-gray-400 cursor-not-allowed' 
+                : 'bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800'
+              }`}
+            >
+              {actionLoading ? (
+                <div className="animate-spin h-5 w-5 border-2 border-white border-t-transparent rounded-full" />
+              ) : (
+                <><FaKey size={18} /> Enter OTP & Start Trip</>
+              )}
+            </button>
+
+            {/* Cancel Button - Only visible if not started */}
+            <button
+              onClick={handleCancelTrip}
+              disabled={actionLoading}
+              className="w-full py-3 bg-red-50 text-red-600 border border-red-200 rounded-2xl font-semibold flex items-center justify-center gap-2 hover:bg-red-100 transition-all"
+            >
+              {actionLoading ? (
+                 <div className="animate-spin h-4 w-4 border-2 border-red-600 border-t-transparent rounded-full" />
+              ) : (
+                <><FaTimesCircle /> Cancel Ride</>
+              )}
+            </button>
+
+            {!trip?.tripData?.arrivedAt && (
+              <p className="text-center text-[10px] text-gray-400 italic">
+                * Mark "Arrived" first to enable Start Trip
+              </p>
+            )}
+          </div>
         )}
 
         {/* End Trip Button */}

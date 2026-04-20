@@ -80,8 +80,16 @@ export const driverService = {
     const response = await driverApi.put(`/trips/execute/${bookingId}/start`, { otp });
     return response.data;
   },
+  markArrived: async (bookingId) => {
+    const response = await driverApi.put(`/trips/execute/${bookingId}/arrived`);
+    return response.data;
+  },
   endTrip: async (bookingId, paymentMethod = 'Cash') => {
     const response = await driverApi.put(`/trips/execute/${bookingId}/end`, { paymentMethod });
+    return response.data;
+  },
+  cancelTrip: async (bookingId, reason = 'Driver cancelled') => {
+    const response = await driverApi.put(`/trips/execute/${bookingId}/cancel`, { reason });
     return response.data;
   },
   getTripDetail: async (bookingId) => {
