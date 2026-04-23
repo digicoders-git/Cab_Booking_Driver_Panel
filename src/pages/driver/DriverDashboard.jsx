@@ -596,9 +596,19 @@ export default function DriverDashboard() {
                           <p className="text-sm text-gray-500">{passenger.phone || '—'}</p>
                           <div className="flex items-center gap-2 mt-1 text-xs text-gray-400">
                             <Navigation size={12} /> {pickup.address?.split(',')[0]}
+                            {booking.stops && booking.stops.length > 0 && (
+                              <span className="flex items-center gap-1 text-orange-500 font-bold bg-orange-50 px-1.5 py-0.5 rounded border border-orange-100">
+                                +{booking.stops.length} STOPS
+                              </span>
+                            )}
                             <span>→</span>
                             <MapPin size={12} /> {drop.address?.split(',')[0]}
                           </div>
+                          {booking.stops && booking.stops.length > 0 && (
+                            <p className="text-[10px] text-gray-400 mt-1 italic line-clamp-1">
+                              via: {booking.stops.map(s => s.address?.split(',')[0]).join(' → ')}
+                            </p>
+                          )}
                         </div>
                       </div>
                       <div className="flex items-center gap-3">

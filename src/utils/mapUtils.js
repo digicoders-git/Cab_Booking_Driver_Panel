@@ -214,8 +214,8 @@ export const createCarMarker = (color = '#3B82F6', carImageUrl = null) => {
 };
 
 export const createLocationMarker = (type = 'pickup') => {
-  const color = type === 'pickup' ? '#10B981' : '#EF4444';
-  const letter = type === 'pickup' ? 'P' : 'D';
+  const color = type === 'pickup' ? '#10B981' : type === 'stop' ? '#F59E0B' : '#EF4444';
+  const letter = type === 'pickup' ? 'P' : type === 'stop' ? 'S' : 'D';
   
   return {
     url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(`

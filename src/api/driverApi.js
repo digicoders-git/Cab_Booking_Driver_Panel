@@ -138,5 +138,14 @@ export const driverService = {
   updateFcmToken: async (fcmToken) => {
     const response = await driverApi.put('/drivers/update-fcm-token', { fcmToken });
     return response.data;
+  },
+  // NEW: Multi-stop management
+  markStopArrived: async (bookingId, stopIndex) => {
+    const response = await driverApi.put(`/trips/execute/${bookingId}/stops/${stopIndex}/arrived`);
+    return response.data;
+  },
+  completeStop: async (bookingId, stopIndex) => {
+    const response = await driverApi.put(`/trips/execute/${bookingId}/stops/${stopIndex}/complete`);
+    return response.data;
   }
 };

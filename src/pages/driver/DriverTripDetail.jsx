@@ -7,7 +7,7 @@ import OptimizedTripMap from '../../components/OptimizedTripMap';
 import {
   FaUser, FaPhone, FaMapMarkerAlt, FaRoute, FaClock,
   FaCheckCircle, FaRupeeSign, FaArrowLeft, FaSync,
-  FaPlay, FaStop, FaKey, FaCar, FaTaxi, FaTimesCircle
+  FaPlay, FaStop, FaKey, FaCar, FaTaxi, FaTimesCircle, FaExclamationTriangle
 } from 'react-icons/fa';
 import { Navigation, MapPin } from 'lucide-react';
 import { getSocket } from '../../socket/socket';
@@ -52,54 +52,59 @@ export default function DriverTripDetail() {
   useEffect(() => {
     fetchTrip();
 
-    // 🎯 Real-time Booking Update Listener (Cancellation etc.)
+    // 🎯 Real-time Booking Update Listener (Cancellation, Stops etc.)
     const socket = getSocket();
     if (socket) {
-      console.log('📡 DriverTripDetail: socket listener attached');
-      socket.on('booking_update', (data) => {
-        console.log('🔔 Booking Details Updated:', data);
+      console.log('📡 DriverTripDetail: socket listeners attached');
+      
+      const handleUpdate = (data) => {
+        console.log('🔔 Trip Event Received:', data);
+        const incomingId = data.bookingId || data.id;
         
-        // Match using full ID or just the shortId from URL for instant response
-        const isTargetBooking = (trip && trip._id === data.bookingId) || 
-                               (data.bookingId && data.bookingId.endsWith(shortId));
+        // Match using full ID or just the shortId from URL
+        const isTarget = (trip && trip._id === incomingId) || 
+                         (incomingId && (incomingId === bookingId || incomingId.endsWith(shortId)));
 
-        if (isTargetBooking) {
+        if (isTarget) {
           if (data.status === 'Cancelled' || data.status === 'Expired') {
-            // Update local state instantly so UI shows "Cancelled" in background
             setTrip(prev => prev ? { ...prev, bookingStatus: data.status } : null);
-
             Swal.fire({
               icon: 'error',
               title: data.status === 'Cancelled' ? 'Trip Cancelled! ❌' : 'Trip Expired! ⏳',
-              text: data.message || `The customer has ${data.status.toLowerCase()} this ride.`,
+              text: data.message || `Customer has ${data.status.toLowerCase()} this ride.`,
               confirmButtonText: 'Back to Dashboard',
               confirmButtonColor: '#EF4444',
               allowOutsideClick: false,
               backdrop: `rgba(239, 68, 68, 0.15) blur(4px)`
-            }).then(() => {
-              navigate('/dashboard');
-            });
+            }).then(() => { navigate('/dashboard'); });
           } else {
+            console.log("🔄 Auto-refreshing trip data...");
             fetchTrip();
           }
         }
-      });
+      };
+
+      socket.on('booking_update', handleUpdate);
+      socket.on('stop_update', handleUpdate);
+
+      return () => {
+        socket.off('booking_update', handleUpdate);
+        socket.off('stop_update', handleUpdate);
+        console.log('⚰️ DriverTripDetail: socket listeners removed');
+      };
     }
+  }, [fetchTrip, shortId, navigate]);
 
-    return () => {
-      if (socket) {
-        socket.off('booking_update');
-        console.log('⚰️ DriverTripDetail: socket listener removed');
-      }
-    };
-  }, [fetchTrip, trip, shortId, navigate]);
-
-  // ⏱️ Waiting Timer Logic
+  // ⏱️ Waiting Timer Logic (Synced for Multi-Stop)
   useEffect(() => {
     let interval;
-    if (trip?.tripData?.arrivedAt && trip?.bookingStatus === 'Accepted') {
-      const start = new Date(trip.tripData.arrivedAt).getTime();
-      
+    const pickupArrived = trip?.tripData?.arrivedAt && trip?.bookingStatus === 'Accepted';
+    const activeStop = (trip?.stops || []).find(s => s.status === 'Arrived');
+    
+    const arrivedAt = pickupArrived ? trip.tripData.arrivedAt : (activeStop ? activeStop.arrivedAt : null);
+
+    if (arrivedAt) {
+      const start = new Date(arrivedAt).getTime();
       interval = setInterval(() => {
         const now = Date.now();
         const diffInSecs = Math.floor((now - start) / 1000);
@@ -109,7 +114,7 @@ export default function DriverTripDetail() {
       setWaitingSeconds(0);
     }
     return () => clearInterval(interval);
-  }, [trip?.tripData?.arrivedAt, trip?.bookingStatus]);
+  }, [trip?.tripData?.arrivedAt, trip?.bookingStatus, trip?.stops]);
 
   const formatTime = (totalSeconds) => {
     const mins = Math.floor(totalSeconds / 60);
@@ -165,41 +170,48 @@ export default function DriverTripDetail() {
 
   // Trip End
   const handleEndTrip = async () => {
-    const baseFare = (trip?.fareEstimate || 0) - (trip?.tripData?.waitingCharges || 0);
-    const waitingCharges = trip?.tripData?.waitingCharges || 0;
-    const waitingTime = trip?.tripData?.waitingTimeMin || 0;
+    // 💰 Calculate TOTAL waiting charges (Pickup + All Intermediate Stops)
+    const pickupWait = trip?.tripData?.waitingCharges || 0;
+    const stopsWait = (trip?.stops || []).reduce((sum, stop) => sum + (stop.waitingCharges || 0), 0);
+    const totalWaitingCharges = pickupWait + stopsWait;
+
+    const currentFare = trip?.actualFare || trip?.fareEstimate || 0;
+    const baseFare = currentFare - totalWaitingCharges;
+    const totalWaitingTime = (trip?.tripData?.waitingTimeMin || 0) + 
+                             (trip?.stops || []).reduce((sum, stop) => sum + (stop.waitingTimeMin || 0), 0);
 
     const result = await Swal.fire({
       title: '🏁 End Trip?',
       html: `
-        <div class="text-left bg-gray-50 p-4 rounded-xl mb-4 border border-gray-200">
+        <div class="text-left bg-gray-50 p-4 rounded-xl mb-4 border border-gray-200 shadow-inner">
           <div class="flex justify-between mb-2">
-            <span class="text-gray-500">Ride Fare:</span>
-            <span class="font-semibold text-gray-800">₹${baseFare}</span>
+            <span class="text-gray-500 font-medium italic">Standard Fare:</span>
+            <span class="font-bold text-gray-800">₹${baseFare}</span>
           </div>
-          ${waitingCharges > 0 ? `
-            <div class="flex justify-between mb-2 text-orange-600">
-              <span>Waiting Fee (${waitingTime} min):</span>
-              <span class="font-bold">+ ₹${waitingCharges}</span>
+          ${totalWaitingCharges > 0 ? `
+            <div class="flex justify-between mb-2 text-orange-600 bg-orange-50 p-2 rounded-lg border border-orange-100">
+              <span class="flex items-center gap-1"><FaClock size={10}/> Total Waiting (${totalWaitingTime} min):</span>
+              <span class="font-black">+ ₹${totalWaitingCharges}</span>
             </div>
           ` : ''}
-          <div class="border-t border-gray-300 my-2 pt-2 flex justify-between">
-            <span class="font-bold text-gray-900">Final Total:</span>
-            <span class="font-bold text-green-600 text-xl">₹${trip?.fareEstimate || 0}</span>
+          <div class="border-t border-gray-300 my-2 pt-3 flex justify-between items-center">
+            <span class="font-black text-gray-900 uppercase">Final Earnings:</span>
+            <span class="font-black text-green-600 text-3xl">₹${currentFare}</span>
           </div>
         </div>
-        <div class="flex gap-4 justify-center mt-4">
-          <label class="flex items-center gap-2 cursor-pointer p-2 border border-gray-200 rounded-lg w-full justify-center">
-            <input type="radio" name="payment" value="Cash" checked /> Cash
+        <p class="text-xs text-gray-400 mb-4">* Collect payment from passenger</p>
+        <div class="flex gap-4 justify-center">
+          <label class="flex-1 flex items-center gap-2 cursor-pointer p-3 border-2 border-gray-200 rounded-xl hover:border-blue-400 transition-all font-bold">
+            <input type="radio" name="payment" value="Cash" checked className="w-5 h-5" /> Cash
           </label>
-          <label class="flex items-center gap-2 cursor-pointer p-2 border border-gray-200 rounded-lg w-full justify-center">
-            <input type="radio" name="payment" value="Online" /> Online
+          <label class="flex-1 flex items-center gap-2 cursor-pointer p-3 border-2 border-gray-200 rounded-xl hover:border-blue-400 transition-all font-bold">
+            <input type="radio" name="payment" value="Online" className="w-5 h-5" /> Online
           </label>
         </div>
       `,
       showCancelButton: true,
-      confirmButtonText: 'End Trip ✅',
-      confirmButtonColor: '#3B82F6',
+      confirmButtonText: 'Confirm & End Trip ✅',
+      confirmButtonColor: '#10B981',
       cancelButtonColor: '#94A3B8',
       preConfirm: () => {
         const selected = document.querySelector('input[name="payment"]:checked');
@@ -216,9 +228,13 @@ export default function DriverTripDetail() {
         await Swal.fire({
           icon: 'success',
           title: '✅ Trip Completed!',
-          html: `<p>Final Fare: <strong>₹${res.finalFare || trip?.fareEstimate || 0}</strong></p>
-                 <p>Payment: <strong>${result.value}</strong></p>`,
-          confirmButtonColor: '#10B981'
+          html: `<div class="p-4 bg-green-50 rounded-2xl border border-green-100 mb-2">
+                   <p class="text-gray-600">Final Fare Collected</p>
+                   <p class="text-4xl font-black text-green-600 mt-1">₹${res.finalFare || currentFare}</p>
+                 </div>
+                 <p class="font-bold text-gray-500 uppercase tracking-widest text-[10px]">Payment Method: ${result.value}</p>`,
+          confirmButtonColor: '#10B981',
+          confirmButtonText: 'Back to Dashboard'
         });
         navigate('/dashboard');
       }
@@ -256,6 +272,39 @@ export default function DriverTripDetail() {
       setActionLoading(false);
     }
   };
+
+  // NEW: Handle arriving at an intermediate stop
+  const handleStopArrived = async (index) => {
+    setActionLoading(true);
+    try {
+      const res = await driverService.markStopArrived(bookingId, index);
+      if (res.success) {
+        toast.success(`📍 Arrived at stop ${index + 1}. Waiting charge started!`);
+        fetchTrip();
+      }
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Failed to mark stop arrival');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  // NEW: Handle completing an intermediate stop
+  const handleStopComplete = async (index) => {
+    setActionLoading(true);
+    try {
+      const res = await driverService.completeStop(bookingId, index);
+      if (res.success) {
+        toast.success(`✅ Stop ${index + 1} completed! Fare updated to ₹${res.totalFare}`);
+        fetchTrip();
+      }
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Failed to complete stop');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
 
   if (loading) return (
     <div className="flex items-center justify-center min-h-screen">
@@ -362,6 +411,27 @@ export default function DriverTripDetail() {
               <p className="text-sm font-medium text-gray-900">{trip?.pickup?.address || '—'}</p>
             </div>
           </div>
+
+          {/* Intermediate Stops */}
+          {trip?.stops && trip.stops.map((stop, idx) => (
+            <div key={idx}>
+              <div className="ml-4 border-l-2 border-dashed border-gray-300 h-4" />
+              <div className="flex items-start gap-3">
+                <div className="relative w-8 h-8 flex items-center justify-center flex-shrink-0">
+                   <div className="absolute inset-0 bg-orange-100 rounded-full scale-75" />
+                   <div className={`w-2 h-2 rounded-full z-10 ${stop.status === 'Completed' ? 'bg-green-500' : 'bg-orange-500'}`} />
+                </div>
+                <div className="flex-1">
+                  <div className="flex items-center gap-2">
+                    <p className="text-[10px] font-bold text-orange-600 uppercase tracking-widest">Stop {idx + 1}</p>
+                    {stop.status === 'Completed' && <FaCheckCircle className="text-green-500 text-[10px]" />}
+                  </div>
+                  <p className="text-xs font-medium text-gray-800">{stop.address}</p>
+                </div>
+              </div>
+            </div>
+          ))}
+
           <div className="ml-4 border-l-2 border-dashed border-gray-300 h-4" />
           <div className="flex items-start gap-3">
             <div className="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
@@ -462,20 +532,126 @@ export default function DriverTripDetail() {
           </div>
         )}
 
-        {/* End Trip Button */}
-        {isOngoing && !isCompleted && (
-          <button
-            onClick={handleEndTrip}
-            disabled={actionLoading}
-            className="w-full py-4 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-2xl font-bold text-lg flex items-center justify-center gap-3 hover:from-red-700 hover:to-red-800 transition-all shadow-lg disabled:opacity-50"
-          >
-            {actionLoading ? (
-              <div className="animate-spin h-5 w-5 border-2 border-white border-t-transparent rounded-full" />
-            ) : (
-              <><FaStop size={18} /> End Trip & Collect Payment</>
-            )}
-          </button>
+        {/* 📍 Stop Management Dashboard (Only when Trip is Ongoing) */}
+        {isOngoing && !isCompleted && trip?.stops && trip.stops.length > 0 && (
+          <div className="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm space-y-4">
+            <h3 className="text-sm font-bold text-gray-800 flex items-center gap-2 border-b pb-3">
+              <FaMapMarkerAlt className="text-orange-500" /> STOPS MANAGEMENT ({trip.stops.length})
+            </h3>
+            <div className="space-y-4">
+              {trip.stops.map((stop, idx) => {
+                const isArrived = stop.status === 'Arrived';
+                const isCompletedStop = stop.status === 'Completed';
+                const isPending = !stop.status || stop.status === 'Pending';
+                
+                return (
+                  <div key={idx} className={`p-4 rounded-xl border ${
+                    isCompletedStop ? 'bg-green-50 border-green-100' : 
+                    isArrived ? 'bg-orange-50 border-orange-200 ring-2 ring-orange-400' : 
+                    'bg-gray-50 border-gray-200'
+                  }`}>
+                    <div className="flex justify-between items-start gap-3">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold text-white ${
+                            isCompletedStop ? 'bg-green-500' : isArrived ? 'bg-orange-500' : 'bg-gray-400'
+                          }`}>
+                            {idx + 1}
+                          </span>
+                          <span className="text-xs font-bold uppercase tracking-wider text-gray-500">Stop Point</span>
+                        </div>
+                        <p className="text-sm font-semibold text-gray-800 leading-tight">{stop.address}</p>
+                        
+                        {isCompletedStop && (
+                          <div className="mt-2 flex items-center gap-4 text-xs font-medium">
+                            <span className="text-green-600 flex items-center gap-1">
+                              <FaCheckCircle /> Done
+                            </span>
+                            <span className="text-gray-500">Wait: {stop.waitingTimeMin || 0}m</span>
+                            <span className="text-blue-600 font-bold">₹{stop.waitingCharges || 0} added</span>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="flex-shrink-0 flex flex-col items-end gap-2">
+                        {isPending && (
+                          <button
+                            onClick={() => handleStopArrived(idx)}
+                            disabled={actionLoading}
+                            className="px-4 py-2 bg-blue-600 text-white rounded-lg text-xs font-bold shadow-md hover:bg-blue-700 active:scale-95 transition-all"
+                          >
+                            REACHED
+                          </button>
+                        )}
+                        {isArrived && (
+                          <div className="flex flex-col items-end gap-2">
+                             <div className="flex items-center gap-2">
+                               <div className="bg-white px-3 py-1 rounded-full border border-orange-300 text-orange-600 text-[10px] font-black animate-pulse">
+                                  PASSENGER AWAY
+                               </div>
+                               <div className="text-orange-700 font-mono text-sm font-bold bg-orange-100 px-2 py-0.5 rounded-lg border border-orange-200">
+                                  {formatTime(waitingSeconds)}
+                               </div>
+                             </div>
+                             <p className="text-[9px] text-orange-500 font-medium">
+                               {waitingSeconds > (trip?.carCategory?.freeWaitingMin || 5) * 60 
+                                ? "💸 Chargeable time active" 
+                                : `Complimentary: ${trip?.carCategory?.freeWaitingMin || 5} min`}
+                             </p>
+                             <button
+                               onClick={() => handleStopComplete(idx)}
+                               disabled={actionLoading}
+                               className="px-4 py-2 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-lg text-xs font-bold shadow-md hover:from-orange-600 hover:to-orange-700 active:scale-95 transition-all w-full"
+                             >
+                               CONTINUE TRIP
+                             </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            <p className="text-[10px] text-gray-400 italic text-center">
+              Stops help you earn extra waiting charges! 💰
+            </p>
+          </div>
         )}
+
+
+        {/* End Trip Button */}
+        {isOngoing && !isCompleted && (() => {
+          const allStopsCompleted = !trip?.stops || trip.stops.length === 0 || trip.stops.every(s => s.status === 'Completed');
+          
+          return (
+            <div className="space-y-3">
+               {!allStopsCompleted && (
+                 <div className="flex items-center gap-2 bg-red-50 p-3 rounded-xl border border-red-100 text-red-600">
+                    <FaExclamationTriangle className="shrink-0" size={14} />
+                    <p className="text-[10px] font-bold uppercase tracking-tight">
+                      Pehle saare intermediate stops complete karo!
+                    </p>
+                 </div>
+               )}
+               <button
+                onClick={handleEndTrip}
+                disabled={actionLoading || !allStopsCompleted}
+                className={`w-full py-4 text-white rounded-2xl font-bold text-lg flex items-center justify-center gap-3 transition-all shadow-lg ${
+                  !allStopsCompleted 
+                  ? 'bg-gray-400 cursor-not-allowed opacity-70' 
+                  : 'bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800'
+                }`}
+              >
+                {actionLoading ? (
+                  <div className="animate-spin h-5 w-5 border-2 border-white border-t-transparent rounded-full" />
+                ) : (
+                  <><FaStop size={18} /> End Trip & Collect Payment</>
+                )}
+              </button>
+            </div>
+          );
+        })()}
 
         {/* Completed */}
         {isCompleted && (
