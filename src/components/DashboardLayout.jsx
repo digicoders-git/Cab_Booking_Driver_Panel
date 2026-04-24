@@ -12,6 +12,7 @@ import { driverService } from "../api/driverApi";
 import { toast } from "sonner";
 import RideRequestModal from "./RideRequestModal";
 import { requestForToken, onMessageListener } from "../firebase";
+import { calculateDistance, calculateBearing } from "../utils/mapUtils";
 
 const DashboardLayout = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -141,13 +142,14 @@ const DashboardLayout = () => {
 
     let lastLat = null;
     let lastLng = null;
+    let lastHeading = 0;
     const MIN_DISTANCE_METERS = 0; // Filter hataya taaki har movement dikhe
     const LOCATION_INTERVAL = 500; // Har aadhe second mein update (Zayda fast)
     let lastUpdateTime = 0;
 
     const watchId = navigator.geolocation.watchPosition(
       async (position) => {
-        const { latitude, longitude, heading } = position.coords;
+        const { latitude, longitude, heading: gpsHeading } = position.coords;
         const now = Date.now();
 
         // Har 0.5 Second se pehle update mat karo (Performance ke liye)
@@ -155,14 +157,31 @@ const DashboardLayout = () => {
 
         if (!isOnlineRef.current) return;
 
+        let finalHeading = lastHeading;
+
+        // --- ACCURATE BEARING CALCULATION ---
+        if (lastLat && lastLng) {
+            const dist = calculateDistance(lastLat, lastLng, latitude, longitude);
+            // Agar driver 2 meter se zyada chala, toh Bearing (Movement angle) use karo
+            if (dist > 0.002) {
+                finalHeading = calculateBearing(lastLat, lastLng, latitude, longitude);
+            } else if (gpsHeading !== null && gpsHeading !== undefined) {
+                // Ruki hui gaadi mein GPS Heading use karo
+                finalHeading = gpsHeading;
+            }
+        } else if (gpsHeading !== null && gpsHeading !== undefined) {
+            finalHeading = gpsHeading;
+        }
+
         lastLat = latitude;
         lastLng = longitude;
+        lastHeading = finalHeading;
         lastUpdateTime = now;
 
-        // Socket se bhej Diya (Instant without HTTP) - WITH HEADING
-        emitLocation(driverId, latitude, longitude, '', heading); // Async call, no await needed
+        // Socket se bhej Diya (Instant without HTTP) - WITH CORRECTED HEADING
+        emitLocation(driverId, latitude, longitude, '', finalHeading); 
 
-        // Har 5 min mein address bhi update karo (HTTP se for persistence)
+        // Har 5 min mein address bhi update karo
         if (now - lastAddressUpdateRef.current >= ADDRESS_UPDATE_INTERVAL) {
           try {
             const address = await getAddressFromCoords(latitude, longitude);
