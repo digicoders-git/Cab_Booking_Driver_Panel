@@ -1,7 +1,10 @@
 // src/components/OptimizedTripMap.jsx
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { loadGoogleMaps, optimizedMapStyles, throttle, calculateDistance, createCarMarker, createLocationMarker } from '../utils/mapUtils';
+import { loadGoogleMaps, optimizedMapStyles, throttle, calculateDistance, calculateBearing, createCarMarker, createLocationMarker } from '../utils/mapUtils';
 import { toast } from 'sonner';
+
+// 🚗 ADJUST CAR DIRECTION HERE
+const HEADING_OFFSET = 0; // If car is 90 deg off, use 90 or -90. If 180, use 180.
 
 const OptimizedTripMap = ({ 
   trip, 
@@ -23,6 +26,7 @@ const OptimizedTripMap = ({
   const watchIdRef = useRef(null);
   const lastRouteUpdateRef = useRef(0);
   const lastPosRef = useRef(null);
+  const lastHeadingRef = useRef(0); // Store last known heading/bearing
   const onLocationUpdateRef = useRef(onLocationUpdate);
   const lastErrorToastRef = useRef(0);
 
@@ -159,10 +163,31 @@ const OptimizedTripMap = ({
   );
 
   const updateDriverMarker = useCallback(
-    throttle((location, heading) => {
+    throttle((location, gpsHeading) => {
       if (!mapInstanceRef.current || !window.google?.maps) return;
 
-      const finalHeading = heading || 0;
+      let finalHeading = lastHeadingRef.current;
+
+      // 1. Calculate Bearing if moved significantly
+      if (lastPosRef.current) {
+        const dist = calculateDistance(lastPosRef.current.lat, lastPosRef.current.lng, location.lat, location.lng);
+        // Only update bearing if driver moved at least 5 meters to avoid "jitter"
+        if (dist > 0.005) { 
+          finalHeading = calculateBearing(lastPosRef.current.lat, lastPosRef.current.lng, location.lat, location.lng);
+        } else if (gpsHeading !== null && gpsHeading !== undefined && gpsHeading !== 0) {
+          // If not moving fast enough, use GPS heading if valid
+          finalHeading = gpsHeading;
+        }
+      } else if (gpsHeading !== null && gpsHeading !== undefined) {
+        finalHeading = gpsHeading;
+      }
+
+      // Apply Offset (Correction)
+      const rotatedHeading = (finalHeading + HEADING_OFFSET) % 360;
+      lastHeadingRef.current = finalHeading; // Store raw heading for next calculation
+
+      // Update state for debug box
+      setDriverLocation({ ...location, heading: rotatedHeading });
       
       // Update Marker Position
       if (driverMarkerRef.current) {
@@ -186,7 +211,7 @@ const OptimizedTripMap = ({
         canvas.height = size;
         const ctx = canvas.getContext('2d');
         ctx.translate(size/2, size/2);
-        ctx.rotate(finalHeading * Math.PI / 180);
+        ctx.rotate(rotatedHeading * Math.PI / 180);
         ctx.drawImage(img, -size/2, -size/2, size, size);
         
         driverMarkerRef.current.setIcon({
@@ -201,7 +226,7 @@ const OptimizedTripMap = ({
         updateRoute(location);
         lastPosRef.current = location;
       }
-    }, 500), // Faster update
+    }, 500),
     [updateRoute, carImageUrl]
   );
 
@@ -238,8 +263,7 @@ const OptimizedTripMap = ({
     watchIdRef.current = navigator.geolocation.watchPosition(
       (pos) => {
         const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-        const head = pos.coords.heading || 0;
-        setDriverLocation({ ...loc, heading: head });
+        const head = pos.coords.heading; // Keep as raw for the marker update logic
         updateDriverMarker(loc, head);
       },
       (err) => {

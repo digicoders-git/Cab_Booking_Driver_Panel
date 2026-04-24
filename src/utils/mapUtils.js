@@ -187,6 +187,25 @@ export const calculateDistance = (lat1, lng1, lat2, lng2) => {
   return R * c; // Distance in km
 };
 
+// Calculate bearing between two points in degrees
+export const calculateBearing = (startLat, startLng, endLat, endLng) => {
+  const startLatRad = (startLat * Math.PI) / 180;
+  const startLngRad = (startLng * Math.PI) / 180;
+  const endLatRad = (endLat * Math.PI) / 180;
+  const endLngRad = (endLng * Math.PI) / 180;
+
+  const dLng = endLngRad - startLngRad;
+
+  const y = Math.sin(dLng) * Math.cos(endLatRad);
+  const x =
+    Math.cos(startLatRad) * Math.sin(endLatRad) -
+    Math.sin(startLatRad) * Math.cos(endLatRad) * Math.cos(dLng);
+
+  let brng = Math.atan2(y, x);
+  brng = (brng * 180) / Math.PI;
+  return (brng + 360) % 360;
+};
+
 // Custom markers - with car image support
 export const createCarMarker = (color = '#3B82F6', carImageUrl = null) => {
   // Agar car image URL hai toh use karo
