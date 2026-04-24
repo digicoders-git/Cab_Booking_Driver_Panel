@@ -111,6 +111,7 @@ const OptimizedTripMap = ({
         routeRendererRef.current = new window.google.maps.DirectionsRenderer({
           map: mapInstanceRef.current,
           suppressMarkers: true,
+          preserveViewport: true, // <--- Zoom fix
           polylineOptions: { strokeColor: '#2563EB', strokeOpacity: 0.8, strokeWeight: 6 }
         });
 
@@ -160,23 +161,47 @@ const OptimizedTripMap = ({
   const updateDriverMarker = useCallback(
     throttle((location, heading) => {
       if (!mapInstanceRef.current || !window.google?.maps) return;
+
+      const finalHeading = heading || 0;
+      
+      // Update Marker Position
       if (driverMarkerRef.current) {
         driverMarkerRef.current.setPosition(location);
       } else {
         driverMarkerRef.current = new window.google.maps.Marker({
           position: location,
           map: mapInstanceRef.current,
-          icon: createCarMarker('#2563EB', carImageUrl),
           zIndex: 1000
         });
       }
+
+      // --- CAR ROTATION LOGIC (Canvas) ---
+      const img = new Image();
+      img.crossOrigin = "anonymous";
+      img.src = carImageUrl || 'https://cdn-icons-png.flaticon.com/512/3202/3202926.png';
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const size = 64;
+        canvas.width = size;
+        canvas.height = size;
+        const ctx = canvas.getContext('2d');
+        ctx.translate(size/2, size/2);
+        ctx.rotate(finalHeading * Math.PI / 180);
+        ctx.drawImage(img, -size/2, -size/2, size, size);
+        
+        driverMarkerRef.current.setIcon({
+          url: canvas.toDataURL(),
+          scaledSize: new window.google.maps.Size(44, 44),
+          anchor: new window.google.maps.Point(22, 22)
+        });
+      };
       
       const lastPos = lastPosRef.current;
       if (!lastPos || calculateDistance(lastPos.lat, lastPos.lng, location.lat, location.lng) > 0.02) {
         updateRoute(location);
         lastPosRef.current = location;
       }
-    }, 1000),
+    }, 500), // Faster update
     [updateRoute, carImageUrl]
   );
 
@@ -213,8 +238,9 @@ const OptimizedTripMap = ({
     watchIdRef.current = navigator.geolocation.watchPosition(
       (pos) => {
         const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-        setDriverLocation(loc);
-        updateDriverMarker(loc, pos.coords.heading);
+        const head = pos.coords.heading || 0;
+        setDriverLocation({ ...loc, heading: head });
+        updateDriverMarker(loc, head);
       },
       (err) => {
         const now = Date.now();
@@ -241,6 +267,17 @@ const OptimizedTripMap = ({
   return (
     <div className="relative">
       <div ref={mapRef} className={className} />
+      
+      {/* --- DEBUG BOX: Driver Panel --- */}
+      {driverLocation && (
+        <div className="absolute top-4 left-4 z-10 bg-black/80 backdrop-blur-md border border-white/10 p-3 rounded-xl shadow-2xl text-[9px] font-mono text-white space-y-1">
+          <div className="text-blue-400 font-bold border-b border-white/5 pb-1 mb-1">GPS LIVE DATA</div>
+          <div className="flex justify-between gap-3"><span>LAT:</span> <span>{driverLocation.lat.toFixed(6)}</span></div>
+          <div className="flex justify-between gap-3"><span>LNG:</span> <span>{driverLocation.lng.toFixed(6)}</span></div>
+          <div className="flex justify-between gap-3 text-green-400 font-bold"><span>HDG:</span> <span>{driverLocation.heading?.toFixed(1)}°</span></div>
+        </div>
+      )}
+
       {!mapLoaded && (
         <div className="absolute inset-0 flex items-center justify-center bg-gray-100 rounded-2xl">
           <div className="animate-spin h-8 w-8 border-4 border-blue-600 border-t-transparent rounded-full" />
