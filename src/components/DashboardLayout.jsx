@@ -141,29 +141,17 @@ const DashboardLayout = () => {
 
     let lastLat = null;
     let lastLng = null;
-    const MIN_DISTANCE_METERS = 1; // Only update if driver moves at least 1 meter
-    const LOCATION_INTERVAL = 1000; // Update every 1 second (1000ms)
+    const MIN_DISTANCE_METERS = 0; // Filter hataya taaki har movement dikhe
+    const LOCATION_INTERVAL = 500; // Har aadhe second mein update (Zayda fast)
     let lastUpdateTime = 0;
-
-    // GPS loaction ko Wathch  kar rha ahi 
-
 
     const watchId = navigator.geolocation.watchPosition(
       async (position) => {
         const { latitude, longitude, heading } = position.coords;
         const now = Date.now();
 
-        // Har 1 Second se pehle update mat karo
+        // Har 0.5 Second se pehle update mat karo (Performance ke liye)
         if (now - lastUpdateTime < LOCATION_INTERVAL) return;
-
-        // 1 Meter se kam move kiya toh update mat karo (Extreme Live)
-        if (lastLat && lastLng) {
-          const dist = Math.sqrt(
-            Math.pow((latitude - lastLat) * 111000, 2) +
-            Math.pow((longitude - lastLng) * 111000, 2)
-          );
-          if (dist < MIN_DISTANCE_METERS) return;
-        }
 
         if (!isOnlineRef.current) return;
 
