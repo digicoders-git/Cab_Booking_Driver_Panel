@@ -7,14 +7,23 @@ import {
 } from 'react-icons/fa';
 import { MapPin, Navigation, Calendar, Clock, DollarSign } from 'lucide-react';
 import Swal from 'sweetalert2';
+import { useAuth } from '../../context/AuthContext';
 
 export default function ScheduledJobs() {
+    const { admin } = useAuth();
     const [jobs, setJobs] = useState([]);
     const [loading, setLoading] = useState(true);
 
+    // Check if the current driver belongs to a Fleet
+    const isFleetDriver = admin?.createdByModel === 'Fleet';
+
     useEffect(() => {
-        fetchJobs();
-    }, []);
+        if (isFleetDriver) {
+            fetchJobs();
+        } else {
+            setLoading(false);
+        }
+    }, [isFleetDriver]);
 
     const fetchJobs = async () => {
         try {
@@ -269,6 +278,26 @@ export default function ScheduledJobs() {
         return (
             <div className="flex items-center justify-center min-h-[60vh]">
                 <div className="animate-spin rounded-full h-10 w-10 border-4 border-blue-600 border-t-transparent" />
+            </div>
+        );
+    }
+
+    // If not a Fleet Driver, show restriction UI
+    if (!isFleetDriver) {
+        return (
+            <div className="p-4 sm:p-6 max-w-5xl mx-auto flex items-center justify-center min-h-[70vh]">
+                <div className="bg-white rounded-3xl p-12 text-center border border-gray-100 shadow-xl max-w-md">
+                    <div className="w-24 h-24 bg-orange-50 rounded-full flex items-center justify-center mx-auto mb-8">
+                        <FaLayerGroup className="text-orange-500" size={48} />
+                    </div>
+                    <h3 className="text-2xl font-black text-gray-900 mb-4">Access Restricted</h3>
+                    <p className="text-gray-500 leading-relaxed mb-8">
+                        Bhai, yeh section sirf **Fleet Drivers** ke liye hai. Normal drivers ko bulk assignments nahi milte.
+                    </p>
+                    <button onClick={() => window.history.back()} className="w-full py-4 bg-gray-900 text-white rounded-2xl font-bold shadow-lg shadow-gray-200 hover:scale-[1.02] transition-all">
+                        Go Back
+                    </button>
+                </div>
             </div>
         );
     }
