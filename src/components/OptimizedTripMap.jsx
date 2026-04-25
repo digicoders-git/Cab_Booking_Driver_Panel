@@ -292,15 +292,7 @@ const OptimizedTripMap = ({
     <div className="relative">
       <div ref={mapRef} className={className} />
       
-      {/* --- DEBUG BOX: Driver Panel --- */}
-      {driverLocation && (
-        <div className="absolute top-4 left-4 z-10 bg-black/80 backdrop-blur-md border border-white/10 p-3 rounded-xl shadow-2xl text-[9px] font-mono text-white space-y-1">
-          <div className="text-blue-400 font-bold border-b border-white/5 pb-1 mb-1">GPS LIVE DATA</div>
-          <div className="flex justify-between gap-3"><span>LAT:</span> <span>{driverLocation.lat.toFixed(6)}</span></div>
-          <div className="flex justify-between gap-3"><span>LNG:</span> <span>{driverLocation.lng.toFixed(6)}</span></div>
-          <div className="flex justify-between gap-3 text-green-400 font-bold"><span>HDG:</span> <span>{driverLocation.heading?.toFixed(1)}°</span></div>
-        </div>
-      )}
+
 
       {!mapLoaded && (
         <div className="absolute inset-0 flex items-center justify-center bg-gray-100 rounded-2xl">
