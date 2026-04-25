@@ -221,25 +221,89 @@ export default function DriverTripDetail() {
 
     if (!result.isConfirmed) return;
 
-    setActionLoading(true);
-    try {
-      const res = await driverService.endTrip(bookingId, result.value);
-      if (res.success) {
-        await Swal.fire({
-          icon: 'success',
-          title: '✅ Trip Completed!',
-          html: `<div class="p-4 bg-green-50 rounded-2xl border border-green-100 mb-2">
-                   <p class="text-gray-600">Final Fare Collected</p>
-                   <p class="text-4xl font-black text-green-600 mt-1">₹${res.finalFare || currentFare}</p>
-                 </div>
-                 <p class="font-bold text-gray-500 uppercase tracking-widest text-[10px]">Payment Method: ${result.value}</p>`,
-          confirmButtonColor: '#10B981',
-          confirmButtonText: 'Back to Dashboard'
-        });
-        navigate('/dashboard');
+    const selectedMethod = result.value;
+
+    if (selectedMethod === 'Online') {
+      setActionLoading(true);
+      try {
+        const orderRes = await driverService.initiateTripPayment(bookingId);
+        if (orderRes.success) {
+          const options = {
+            key: orderRes.key,
+            amount: orderRes.amount * 100,
+            currency: "INR",
+            name: "Cab Booking Payment",
+            description: `Trip #${shortId.toUpperCase()}`,
+            order_id: orderRes.orderId,
+            handler: async (response) => {
+              console.log("💳 Razorpay Success Response:", response);
+              try {
+                const verifyRes = await driverService.verifyTripPayment({
+                  bookingId,
+                  razorpayOrderId: response.razorpay_order_id,
+                  razorpayPaymentId: response.razorpay_payment_id,
+                  razorpaySignature: response.razorpay_signature
+                });
+
+                console.log("✅ Payment Verification Result:", verifyRes);
+
+                if (verifyRes.success) {
+                  await Swal.fire({
+                    icon: 'success',
+                    title: '✅ Payment Success!',
+                    text: `Payment verified. Trip Completed.`,
+                    confirmButtonColor: '#10B981',
+                  });
+                  navigate('/dashboard');
+                } else {
+                  console.error("❌ Verification Failed:", verifyRes.message);
+                  toast.error(verifyRes.message || "Verification failed");
+                }
+              } catch (err) {
+                console.error("🚨 Verification Error:", err);
+                toast.error("Error verifying payment");
+              }
+            },
+            prefill: {
+              name: trip.passengerDetails?.name || "",
+              contact: trip.passengerDetails?.phone || ""
+            },
+            theme: { color: "#2563eb" },
+            modal: { ondismiss: () => setActionLoading(false) }
+          };
+
+          const rzp = new window.Razorpay(options);
+          rzp.open();
+        } else {
+          toast.error(orderRes.message || "Failed to initiate payment");
+          setActionLoading(false);
+        }
+      } catch (err) {
+        toast.error("Payment initiation error");
+        setActionLoading(false);
       }
-    } finally {
-      setActionLoading(false);
+    } else {
+      setActionLoading(true);
+      try {
+        const res = await driverService.endTrip(bookingId, 'Cash');
+        if (res.success) {
+          await Swal.fire({
+            icon: 'success',
+            title: '✅ Trip Completed!',
+            html: `<div class="p-4 bg-green-50 rounded-2xl border border-green-100 mb-2">
+                     <p class="text-gray-600">Final Fare Collected (Cash)</p>
+                     <p class="text-4xl font-black text-green-600 mt-1">₹${res.finalFare || currentFare}</p>
+                   </div>`,
+            confirmButtonColor: '#10B981',
+            confirmButtonText: 'Back to Dashboard'
+          });
+          navigate('/dashboard');
+        }
+      } catch (err) {
+        toast.error("Failed to end trip");
+      } finally {
+        setActionLoading(false);
+      }
     }
   };
 

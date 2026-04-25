@@ -19,7 +19,8 @@ initHC(HC_more); initHC(HC_solidGauge); initHC(HC_accessibility);
 
 import {
   FaCar, FaUser, FaWallet, FaStar, FaClock, FaSync, FaPowerOff,
-  FaCheckCircle, FaBan, FaRoute, FaHeadset, FaBell, FaHistory, FaPhone
+  FaCheckCircle, FaBan, FaRoute, FaHeadset, FaBell, FaHistory, FaPhone,
+  FaLayerGroup
 } from 'react-icons/fa';
 import { DollarSign, Target, Gauge, MapPin, Navigation, PieChart, BarChart3, LineChart } from 'lucide-react';
 import Swal from 'sweetalert2';
@@ -71,6 +72,7 @@ export default function DriverDashboard() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [pendingRequests, setPendingRequests] = useState([]);
+  const [bulkAssignments, setBulkAssignments] = useState([]); // NEW: Bulk trips
   const [tripHistory, setTripHistory] = useState([]);
   const [wallet, setWallet] = useState(null);
   const [notifications, setNotifications] = useState([]);
@@ -87,12 +89,13 @@ export default function DriverDashboard() {
       setRefreshing(true);
 
       console.log('📡 Making API calls...');
-      const [profileRes, walletRes, pendingRes, tripsRes, notifRes] = await Promise.all([
+      const [profileRes, walletRes, pendingRes, tripsRes, notifRes, bulkRes] = await Promise.all([
         driverService.getProfile(),
         driverService.getWalletBalance(),
         driverService.getPendingRequests(),
         driverService.getMyTrips(),
-        driverService.getNotifications()
+        driverService.getNotifications(),
+        driverService.getAssignedBulkBookings() // NEW
       ]);
 
       console.log('✅ API Responses received:');
@@ -133,6 +136,7 @@ export default function DriverDashboard() {
 
       setTripHistory(tripsRes?.trips || tripsRes || []);
       setNotifications(notifRes?.notifications || notifRes || []);
+      setBulkAssignments(bulkRes?.assignments || []); // NEW
 
       console.log('\n✅ ========== FETCH DASHBOARD DATA COMPLETE ==========\n');
     } catch (err) {
@@ -625,6 +629,69 @@ export default function DriverDashboard() {
                   </div>
                 );
               })}
+            </div>
+          </div>
+        )}
+
+        {/* Scheduled Bulk Trips */}
+        {bulkAssignments.length > 0 && (
+          <div className="bg-white rounded-xl border-2 border-dashed border-blue-200 shadow-sm overflow-hidden">
+            <div className="px-6 py-4 border-b bg-blue-50 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="p-1.5 bg-blue-600 rounded-lg text-white">
+                    <FaLayerGroup size={14} />
+                </div>
+                <h3 className="text-sm font-bold text-gray-900">Scheduled Bulk Trips ({bulkAssignments.length})</h3>
+              </div>
+              <span className="text-[10px] font-black uppercase tracking-widest text-blue-600">Upcoming Jobs</span>
+            </div>
+            <div className="divide-y divide-gray-100">
+              {bulkAssignments.map((job, idx) => (
+                <div key={job._id || idx} className="p-5 hover:bg-blue-50/30 transition-all">
+                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div className="flex items-start gap-4">
+                      <div className="w-12 h-12 rounded-2xl bg-white border shadow-sm flex flex-col items-center justify-center text-center p-1">
+                        <span className="text-[10px] font-bold text-blue-600 uppercase">
+                            {new Date(job.pickupDateTime).toLocaleString('default', { month: 'short' })}
+                        </span>
+                        <span className="text-lg font-black text-gray-900 leading-none">
+                            {new Date(job.pickupDateTime).getDate()}
+                        </span>
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                            <p className="font-bold text-gray-900">Trip to {job.drop?.address?.split(',')[0]}</p>
+                            <span className="px-2 py-0.5 bg-blue-600 text-white text-[9px] font-black rounded-full uppercase tracking-tighter">Bulk</span>
+                        </div>
+                        <p className="text-xs text-gray-500 mt-1 flex items-center gap-1">
+                            <MapPin size={10} /> {job.pickup?.address}
+                        </p>
+                        <div className="flex items-center gap-3 mt-2">
+                            <p className="text-[10px] font-bold text-gray-400 flex items-center gap-1">
+                                <FaCar /> {job.myCar?.carNumber || 'Assigned Car'}
+                            </p>
+                            <div className="w-1 h-1 rounded-full bg-gray-300" />
+                            <p className="text-[10px] font-bold text-gray-400 flex items-center gap-1">
+                                <FaClock /> {new Date(job.pickupDateTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </p>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between md:justify-end gap-6 bg-gray-50 md:bg-transparent p-3 md:p-0 rounded-xl">
+                      <div className="text-right">
+                        <p className="text-xs text-gray-400 font-bold uppercase">Estimated</p>
+                        <p className="text-xl font-black text-blue-600">₹{job.offeredPrice?.toLocaleString()}</p>
+                      </div>
+                      <button 
+                        onClick={() => toast.info(`Bulk Trip details will be available on ${new Date(job.pickupDateTime).toLocaleDateString()}`)}
+                        className="px-6 py-2.5 bg-gray-900 text-white rounded-xl text-xs font-bold hover:bg-gray-800 transition-all shadow-lg"
+                      >
+                        View Job
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         )}

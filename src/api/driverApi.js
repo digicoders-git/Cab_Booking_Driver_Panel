@@ -147,5 +147,30 @@ export const driverService = {
   completeStop: async (bookingId, stopIndex) => {
     const response = await driverApi.put(`/trips/execute/${bookingId}/stops/${stopIndex}/complete`);
     return response.data;
+  },
+  getAssignedBulkBookings: async () => {
+    const response = await driverApi.get('/bulk-bookings/driver/my-assignments');
+    return response.data;
+  },
+  startBulkAssignment: async (bookingId, otp) => {
+    const response = await driverApi.post(`/bulk-bookings/driver/start/${bookingId}`, { otp });
+    return response.data;
+  },
+  endBulkAssignment: async (bookingId, paymentMode = null) => {
+    const response = await driverApi.post(`/bulk-bookings/driver/end/${bookingId}`, { paymentMode });
+    return response.data;
+  },
+  verifyBulkPayment: async (paymentData) => {
+    const response = await driverApi.post('/bulk-bookings/verify-payment', paymentData);
+    return response.data;
+  },
+  // NEW: Razorpay for Normal Trips
+  initiateTripPayment: async (bookingId) => {
+    const response = await driverApi.post(`/trips/execute/${bookingId}/initiate-payment`);
+    return response.data;
+  },
+  verifyTripPayment: async (paymentData) => {
+    const response = await driverApi.post('/trips/execute/verify-payment', paymentData);
+    return response.data;
   }
 };
