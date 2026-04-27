@@ -39,6 +39,9 @@ export default function DriverProfile() {
   const [city, setCity] = useState('');
   const [state, setState] = useState('');
   const [pincode, setPincode] = useState('');
+  const [addressLatitude, setAddressLatitude] = useState(null);
+  const [addressLongitude, setAddressLongitude] = useState(null);
+  const [isAddressSelected, setIsAddressSelected] = useState(false);
   const [totalTrips, setTotalTrips] = useState(0);
   const [totalEarnings, setTotalEarnings] = useState(0);
   const [rating, setRating] = useState(0);
@@ -50,6 +53,38 @@ export default function DriverProfile() {
   const [selectedRcFile, setSelectedRcFile] = useState(null);
   const [selectedInsuranceFile, setSelectedInsuranceFile] = useState(null);
   const [selectedPucFile, setSelectedPucFile] = useState(null);
+  const profileAddressRef = useRef(null);
+
+  useEffect(() => {
+    if (editMode && profileAddressRef.current) {
+      const autocomplete = new window.google.maps.places.Autocomplete(profileAddressRef.current, {
+        types: ['address'],
+        componentRestrictions: { country: 'in' }
+      });
+
+      autocomplete.addListener('place_changed', () => {
+        const place = autocomplete.getPlace();
+        if (!place.geometry) return;
+
+        const lat = place.geometry.location.lat();
+        const lng = place.geometry.location.lng();
+
+        // Extract components
+        let cityVal = '', stateVal = '';
+        place.address_components.forEach(comp => {
+          if (comp.types.includes('locality')) cityVal = comp.long_name;
+          if (comp.types.includes('administrative_area_level_1')) stateVal = comp.long_name;
+        });
+
+        setAddress(place.formatted_address);
+        if (cityVal) setCity(cityVal);
+        if (stateVal) setState(stateVal);
+        setAddressLatitude(lat);
+        setAddressLongitude(lng);
+        setIsAddressSelected(true);
+      });
+    }
+  }, [editMode]);
 
   useEffect(() => {
     fetchProfile();
@@ -73,6 +108,9 @@ export default function DriverProfile() {
       setCity(data.city || '');
       setState(data.state || '');
       setPincode(data.pincode || '');
+      setAddressLatitude(data.addressLatitude || null);
+      setAddressLongitude(data.addressLongitude || null);
+      if (data.address) setIsAddressSelected(true);
       setTotalTrips(data.totalTrips || 0);
       setTotalEarnings(data.totalEarnings || 0);
       setRating(data.rating || 0);
@@ -122,6 +160,10 @@ export default function DriverProfile() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!isAddressSelected && editMode) {
+      toast.error('Please select address from Google suggestions');
+      return;
+    }
     setUpdating(true);
     try {
       const formData = new FormData();
@@ -136,6 +178,8 @@ export default function DriverProfile() {
       formData.append('city', city);
       formData.append('state', state);
       formData.append('pincode', pincode);
+      if (addressLatitude) formData.append('addressLatitude', addressLatitude);
+      if (addressLongitude) formData.append('addressLongitude', addressLongitude);
       if (selectedFile) formData.append('image', selectedFile);
       if (selectedRcFile) formData.append('rcImage', selectedRcFile);
       if (selectedInsuranceFile) formData.append('insuranceImage', selectedInsuranceFile);
@@ -423,16 +467,21 @@ export default function DriverProfile() {
                       <label className="block text-xs font-medium text-gray-600 mb-1.5 flex items-center gap-1">
                         <MapPin size={12} /> Full Address
                       </label>
-                      <textarea
-                        rows="2"
+                      <input
+                        ref={profileAddressRef}
+                        type="text"
                         value={address}
-                        onChange={(e) => setAddress(e.target.value)}
+                        onChange={(e) => {
+                          setAddress(e.target.value);
+                          setIsAddressSelected(false);
+                        }}
                         disabled={!editMode}
-                        className={`w-full px-4 py-2.5 border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 resize-none ${editMode ? 'border-gray-300' : 'border-gray-200 bg-gray-50 text-gray-500'
+                        placeholder={editMode ? "Start typing your home address..." : "Address"}
+                        className={`w-full px-4 py-2.5 border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 ${editMode ? 'border-gray-300' : 'border-gray-200 bg-gray-50 text-gray-500'
                           }`}
                       />
                     </div>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                       <div>
                         <label className="block text-xs font-medium text-gray-600 mb-1.5">City</label>
                         <input
@@ -455,16 +504,21 @@ export default function DriverProfile() {
                             }`}
                         />
                       </div>
-                      <div>
-                        <label className="block text-xs font-medium text-gray-600 mb-1.5">Pincode</label>
-                        <input
-                          type="text"
-                          value={pincode}
-                          onChange={(e) => setPincode(e.target.value)}
-                          disabled={!editMode}
-                          className={`w-full px-4 py-2.5 border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 ${editMode ? 'border-gray-300' : 'border-gray-200 bg-gray-50 text-gray-500'
-                            }`}
-                        />
+                    </div>
+                    <div className="bg-gray-50 p-4 rounded-xl border border-gray-200 mt-4">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Navigation size={14} className="text-blue-600" />
+                        <span className="text-xs font-semibold text-gray-700">Home Location Coordinates</span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="text-[10px] text-gray-500 bg-white p-2 rounded border border-gray-100">
+                          <span className="font-medium text-gray-400 block mb-1 uppercase">Latitude</span>
+                          {addressLatitude ? addressLatitude.toFixed(6) : 'Not Set'}
+                        </div>
+                        <div className="text-[10px] text-gray-500 bg-white p-2 rounded border border-gray-100">
+                          <span className="font-medium text-gray-400 block mb-1 uppercase">Longitude</span>
+                          {addressLongitude ? addressLongitude.toFixed(6) : 'Not Set'}
+                        </div>
                       </div>
                     </div>
                   </div>

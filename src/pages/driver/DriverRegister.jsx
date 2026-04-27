@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, forwardRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { driverService } from '../../api/driverApi';
@@ -11,19 +11,20 @@ import {
 
 const STEPS = ['Personal Info', 'Documents', 'Bank Details', 'Car Details', 'Documents Upload'];
 
-const InputField = ({ label, icon: Icon, error, ...props }) => (
+const InputField = forwardRef(({ label, icon: Icon, error, ...props }, ref) => (
   <div>
     <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
     <div className="relative">
       {Icon && <Icon className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm" />}
       <input
+        ref={ref}
         className={`w-full ${Icon ? 'pl-9' : 'pl-4'} pr-4 py-2.5 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 ${error ? 'border-red-400' : 'border-gray-300'}`}
         {...props}
       />
     </div>
     {error && <p className="text-xs text-red-500 mt-1">{error}</p>}
   </div>
-);
+));
 
 const FileUpload = ({ label, name, accept = 'image/*', value, onChange, error }) => (
   <div>
@@ -90,7 +91,9 @@ export default function DriverRegister() {
     pucExpiry: prefill?.carDetails?.pucExpiry ? prefill.carDetails.pucExpiry.substring(0, 10) : '',
     // Files (Always null for security)
     image: null, rcImage: null, insuranceImage: null, pucImage: null, permitImage: null,
-    aadharFile: null, panFile: null // New file fields
+    aadharFile: null, panFile: null, // New file fields
+    addressLatitude: prefill?.addressLatitude || null,
+    addressLongitude: prefill?.addressLongitude || null
   };
 
   const [form, setForm] = useState(initialForm);
@@ -98,6 +101,42 @@ export default function DriverRegister() {
   const [loading, setLoading] = useState(false);
   const [carCategories, setCarCategories] = useState([]);
   const [loadingCategories, setLoadingCategories] = useState(false);
+  const [isAddressSelected, setIsAddressSelected] = useState(false);
+  const addressRef = useRef(null);
+
+  useEffect(() => {
+    if (step === 1 && addressRef.current) {
+      const autocomplete = new window.google.maps.places.Autocomplete(addressRef.current, {
+        types: ['address'],
+        componentRestrictions: { country: 'in' }
+      });
+
+      autocomplete.addListener('place_changed', () => {
+        const place = autocomplete.getPlace();
+        if (!place.geometry) return;
+
+        const lat = place.geometry.location.lat();
+        const lng = place.geometry.location.lng();
+
+        // Extract address components
+        let city = '', state = '';
+        place.address_components.forEach(comp => {
+          if (comp.types.includes('locality')) city = comp.long_name;
+          if (comp.types.includes('administrative_area_level_1')) state = comp.long_name;
+        });
+
+        setForm(prev => ({
+          ...prev,
+          address: place.formatted_address,
+          city: city || prev.city,
+          state: state || prev.state,
+          addressLatitude: lat,
+          addressLongitude: lng
+        }));
+        setIsAddressSelected(true);
+      });
+    }
+  }, [step]);
 
   useEffect(() => {
     fetchCarCategories();
@@ -133,6 +172,7 @@ export default function DriverRegister() {
       }
     } else {
       setForm(prev => ({ ...prev, [name]: files ? files[0] : value }));
+      if (name === 'address') setIsAddressSelected(false);
     }
     if (errors[name]) setErrors(prev => ({ ...prev, [name]: '' }));
   };
@@ -158,9 +198,9 @@ export default function DriverRegister() {
       if (!form.aadhar.trim()) errs.aadhar = 'Aadhar required';
       if (!form.pan.trim()) errs.pan = 'PAN required';
       if (!form.address.trim()) errs.address = 'Address required';
+      else if (!isAddressSelected) errs.address = 'Please select address from suggestions';
       if (!form.city.trim()) errs.city = 'City required';
       if (!form.state.trim()) errs.state = 'State required';
-      if (!form.pincode.trim()) errs.pincode = 'Pincode required';
       if (!isEditMode && !form.image) errs.image = 'Profile photo required';
     }
     if (step === 2) {
@@ -297,11 +337,19 @@ export default function DriverRegister() {
                 <InputField label="Aadhar Number" name="aadhar" icon={FaShieldAlt} value={form.aadhar} onChange={handleChange} error={errors.aadhar} maxLength={12} />
                 <InputField label="PAN Number" name="pan" icon={FaIdCard} value={form.pan} onChange={handleChange} error={errors.pan} maxLength={10} />
               </div>
-              <InputField label="Address" name="address" icon={FaMapMarkerAlt} value={form.address} onChange={handleChange} error={errors.address} />
-              <div className="grid grid-cols-3 gap-3">
+              <InputField 
+                ref={addressRef}
+                label="Home Address" 
+                name="address" 
+                icon={FaMapMarkerAlt} 
+                value={form.address} 
+                onChange={handleChange} 
+                error={errors.address} 
+                placeholder="Type your address..."
+              />
+              <div className="grid grid-cols-2 gap-3">
                 <InputField label="City" name="city" value={form.city} onChange={handleChange} error={errors.city} />
                 <InputField label="State" name="state" value={form.state} onChange={handleChange} error={errors.state} />
-                <InputField label="Pincode" name="pincode" value={form.pincode} onChange={handleChange} error={errors.pincode} maxLength={6} />
               </div>
               <FileUpload label={isEditMode ? 'Update Profile Photo (Optional)' : 'Profile Photo'} name="image" value={form.image} onChange={handleChange} error={errors.image} />
             </div>
@@ -382,6 +430,20 @@ export default function DriverRegister() {
             </button>
           )}
         </div>
+
+        {!isEditMode && step === 0 && (
+          <div className="px-6 pb-6 text-center">
+            <p className="text-sm text-gray-600">
+              Already have an account?{' '}
+              <button
+                onClick={() => navigate('/login')}
+                className="text-blue-600 font-bold hover:underline"
+              >
+                Login here
+              </button>
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );
