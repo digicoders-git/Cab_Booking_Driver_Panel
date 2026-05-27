@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { driverService } from '../../api/driverApi';
 import { toast } from 'sonner';
 import { 
@@ -11,6 +12,21 @@ import Swal from 'sweetalert2';
 export default function ScheduledJobs() {
     const [jobs, setJobs] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [activeTab, setActiveTab] = useState("active");
+    const navigate = useNavigate();
+
+    // Handle Payment Return URL params
+    useEffect(() => {
+        const params = new URLSearchParams(window.location.search);
+        if (params.get('success') === 'true') {
+            Swal.fire('Success', 'Payment Verified! Bulk Deal Completed.', 'success');
+            // Clean up URL
+            window.history.replaceState({}, '', window.location.pathname);
+        } else if (params.get('error')) {
+            toast.error(decodeURIComponent(params.get('error')));
+            window.history.replaceState({}, '', window.location.pathname);
+        }
+    }, []);
 
     useEffect(() => {
         fetchJobs();
@@ -186,69 +202,14 @@ export default function ScheduledJobs() {
                         setLoading(true);
                         const finalRes = await driverService.endBulkAssignment(bookingId, mode);
                         
-                        // IF ONLINE: Handle Razorpay Checkout
+                        // IF ONLINE: Handle HDFC Checkout
                         if (finalRes.success && finalRes.isOnlinePayment) {
-                            const loadRazorpay = () => {
-                                return new Promise((resolve) => {
-                                    const script = document.createElement('script');
-                                    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
-                                    script.onload = () => resolve(true);
-                                    script.onerror = () => resolve(false);
-                                    document.body.appendChild(script);
-                                });
-                            };
-
-                            const resScript = await loadRazorpay();
-                            if (!resScript) {
-                                toast.error("Razorpay SDK failed to load. Check internet.");
-                                return;
+                            const paymentUrl = finalRes.paymentLinks?.web || finalRes.paymentLinks;
+                            if (paymentUrl) {
+                                window.location.href = paymentUrl;
+                            } else {
+                                toast.error("Invalid payment link received from HDFC");
                             }
-
-                            const options = {
-                                key: finalRes.key_id,
-                                amount: finalRes.amount * 100,
-                                currency: "INR",
-                                name: "KwikCabs Bulk",
-                                description: `Final Payment for Booking #${finalRes.bookingId.slice(-6)}`,
-                                order_id: finalRes.razorpayOrderId,
-                                handler: async (response) => {
-                                    console.log("✅ Driver Final Payment Razorpay Success:", response);
-                                    try {
-                                        // Verify final payment
-                                        const verifyRes = await driverService.verifyBulkPayment({
-                                            bookingId: finalRes.bookingId,
-                                            paymentId: response.razorpay_payment_id,
-                                            type: 'final'
-                                        });
-                                        console.log("📡 Backend Final Verification Result:", verifyRes);
-                                        if (verifyRes.success) {
-                                            Swal.fire('Success', 'Payment Verified! Bulk Deal Completed.', 'success');
-                                            fetchJobs();
-                                        }
-                                    } catch (err) {
-                                        console.error("❌ Final Payment Verification Error:", err);
-                                        toast.error("Payment verification failed.");
-                                    }
-                                },
-                                theme: { color: "#2563eb" },
-                                modal: {
-                                    onDismiss: function() {
-                                        console.log("⚠️ RAZORPAY STATUS: CANCELLED (Modal Dismissed)");
-                                        toast.info("Payment cancelled");
-                                    }
-                                }
-                            };
-
-                            const rzp1 = new window.Razorpay(options);
-
-                            rzp1.on('payment.failed', function (response) {
-                                console.log("❌ RAZORPAY STATUS: FAILED");
-                                console.error("Reason:", response.error.description);
-                                console.error("Error Code:", response.error.code);
-                            });
-
-                            console.log("🚀 RAZORPAY STATUS: MODAL OPENING...");
-                            rzp1.open();
                         } else if (finalRes.success) {
                             toast.success("Bulk Deal successfully completed and settled!");
                             fetchJobs();
@@ -286,25 +247,45 @@ export default function ScheduledJobs() {
                     </h1>
                     <p className="text-gray-500 text-sm mt-1">View and manage your upcoming fleet assignments</p>
                 </div>
-                <div className="flex items-center gap-2 px-4 py-2 bg-blue-50 rounded-xl border border-blue-100">
-                    <span className="text-sm font-bold text-blue-600">{jobs.length} Active Assignments</span>
+                <div className="flex bg-gray-100 p-1 rounded-xl w-fit">
+                    <button 
+                        onClick={() => setActiveTab("active")}
+                        className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${activeTab === "active" ? 'bg-white shadow-sm text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}
+                    >
+                        Active ({jobs.filter(j => j.myStatus !== 'Completed' && j.myStatus !== 'Cancelled').length})
+                    </button>
+                    <button 
+                        onClick={() => setActiveTab("history")}
+                        className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${activeTab === "history" ? 'bg-white shadow-sm text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}
+                    >
+                        History ({jobs.filter(j => j.myStatus === 'Completed' || j.myStatus === 'Cancelled').length})
+                    </button>
                 </div>
             </div>
 
             {/* Content */}
-            {jobs.length === 0 ? (
-                <div className="bg-white rounded-3xl p-16 text-center border-2 border-dashed border-gray-200">
-                    <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-6">
-                        <Calendar className="text-gray-300" size={40} />
-                    </div>
-                    <h3 className="text-xl font-bold text-gray-900 mb-2">No Scheduled Jobs</h3>
-                    <p className="text-gray-500 max-w-sm mx-auto">
-                        Aapke paas abhi koi aane wali bulk booking nahi hai. Jab Fleet Owner aapko assign karega, wo yahan dikhegi.
-                    </p>
-                </div>
-            ) : (
-                <div className="grid grid-cols-1 gap-4">
-                    {jobs.map((job) => (
+            {(() => {
+                const activeJobs = jobs.filter(j => j.myStatus !== 'Completed' && j.myStatus !== 'Cancelled');
+                const historyJobs = jobs.filter(j => j.myStatus === 'Completed' || j.myStatus === 'Cancelled');
+                const displayedJobs = activeTab === "active" ? activeJobs : historyJobs;
+
+                if (displayedJobs.length === 0) {
+                    return (
+                        <div className="bg-white rounded-3xl p-16 text-center border-2 border-dashed border-gray-200">
+                            <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-6">
+                                <Calendar className="text-gray-300" size={40} />
+                            </div>
+                            <h3 className="text-xl font-bold text-gray-900 mb-2">No {activeTab === "active" ? "Active Jobs" : "History"}</h3>
+                            <p className="text-gray-500 max-w-sm mx-auto">
+                                {activeTab === "active" ? "Aapke paas abhi koi aane wali bulk booking nahi hai." : "Aapne abhi tak koi bulk booking complete nahi ki hai."}
+                            </p>
+                        </div>
+                    );
+                }
+
+                return (
+                    <div className="grid grid-cols-1 gap-4">
+                        {displayedJobs.map((job) => (
                         <div key={job._id} className="bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-xl transition-all overflow-hidden group">
                             <div className="flex flex-col lg:flex-row">
                                 {/* Date Section */}
@@ -405,9 +386,10 @@ export default function ScheduledJobs() {
                                 </div>
                             </div>
                         </div>
-                    ))}
-                </div>
-            )}
+                        ))}
+                    </div>
+                );
+            })()}
         </div>
     );
 }

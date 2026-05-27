@@ -116,6 +116,20 @@ export default function DriverTripDetail() {
     return () => clearInterval(interval);
   }, [trip?.tripData?.arrivedAt, trip?.bookingStatus, trip?.stops]);
 
+  // Handle Payment Return URL params
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('success') === 'true') {
+      toast.success("Payment verified! Trip Completed.");
+      // Clean up URL
+      window.history.replaceState({}, '', window.location.pathname);
+      navigate('/dashboard');
+    } else if (params.get('error')) {
+      toast.error(decodeURIComponent(params.get('error')));
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  }, [navigate]);
+
   const formatTime = (totalSeconds) => {
     const mins = Math.floor(totalSeconds / 60);
     const secs = totalSeconds % 60;
@@ -228,52 +242,14 @@ export default function DriverTripDetail() {
       try {
         const orderRes = await driverService.initiateTripPayment(bookingId);
         if (orderRes.success) {
-          const options = {
-            key: orderRes.key,
-            amount: orderRes.amount * 100,
-            currency: "INR",
-            name: "Cab Booking Payment",
-            description: `Trip #${shortId.toUpperCase()}`,
-            order_id: orderRes.orderId,
-            handler: async (response) => {
-              console.log("💳 Razorpay Success Response:", response);
-              try {
-                const verifyRes = await driverService.verifyTripPayment({
-                  bookingId,
-                  razorpayOrderId: response.razorpay_order_id,
-                  razorpayPaymentId: response.razorpay_payment_id,
-                  razorpaySignature: response.razorpay_signature
-                });
-
-                console.log("✅ Payment Verification Result:", verifyRes);
-
-                if (verifyRes.success) {
-                  await Swal.fire({
-                    icon: 'success',
-                    title: '✅ Payment Success!',
-                    text: `Payment verified. Trip Completed.`,
-                    confirmButtonColor: '#10B981',
-                  });
-                  navigate('/dashboard');
-                } else {
-                  console.error("❌ Verification Failed:", verifyRes.message);
-                  toast.error(verifyRes.message || "Verification failed");
-                }
-              } catch (err) {
-                console.error("🚨 Verification Error:", err);
-                toast.error("Error verifying payment");
-              }
-            },
-            prefill: {
-              name: trip.passengerDetails?.name || "",
-              contact: trip.passengerDetails?.phone || ""
-            },
-            theme: { color: "#2563eb" },
-            modal: { ondismiss: () => setActionLoading(false) }
-          };
-
-          const rzp = new window.Razorpay(options);
-          rzp.open();
+          // HDFC REDIRECT FLOW
+          const paymentUrl = orderRes.paymentLinks?.web || orderRes.paymentLinks;
+          if (paymentUrl) {
+              window.location.href = paymentUrl;
+          } else {
+              toast.error("Invalid payment link received from HDFC");
+              setActionLoading(false);
+          }
         } else {
           toast.error(orderRes.message || "Failed to initiate payment");
           setActionLoading(false);
