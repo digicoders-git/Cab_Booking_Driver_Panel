@@ -1,19 +1,22 @@
 import { useState, useEffect } from 'react';
-import { FaCar, FaCheckCircle, FaBan, FaPhone } from 'react-icons/fa';
-import { Navigation, MapPin } from 'lucide-react';
+import { FaMapMarkerAlt, FaUserAlt, FaCarSide } from 'react-icons/fa';
 
 const RideRequestModal = ({ 
   isOpen, 
   onClose, 
   rideData, 
   onAccept, 
-  onReject,
-  themeColors 
+  onReject 
 }) => {
-  const [countdown, setCountdown] = useState(10);
+  const [countdown, setCountdown] = useState(15);
 
   useEffect(() => {
     if (!isOpen || !rideData?.expiresAt) return;
+
+    // Ringtone logic
+    const audio = new Audio('/ringtone.mp3');
+    audio.loop = true;
+    audio.play().catch(e => console.log('Autoplay blocked by browser. Please interact with the app first.', e));
 
     const updateTimer = () => {
       const remaining = Math.max(0, Math.round((rideData.expiresAt - Date.now()) / 1000));
@@ -26,142 +29,142 @@ const RideRequestModal = ({
 
     updateTimer();
     const interval = setInterval(updateTimer, 1000);
-    return () => clearInterval(interval);
+    
+    return () => {
+      clearInterval(interval);
+      audio.pause();
+      audio.currentTime = 0;
+    };
   }, [isOpen, rideData, onClose]);
 
   if (!isOpen || !rideData) return null;
 
+  const progressPercent = (countdown / 15) * 100;
+
   return (
-    <div
-      className="fixed inset-0 z-[9999] flex items-center justify-center sm:p-4 bg-black/80 backdrop-blur-md"
-    >
-      <div className="bg-white sm:rounded-[2.5rem] shadow-2xl max-w-lg w-full h-full sm:h-auto sm:max-h-[90vh] flex flex-col overflow-hidden border-0 sm:border-2 border-gray-100 animate-[slideUp_0.3s_ease-out]">
+    <div className="fixed inset-0 z-[9999] flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-md sm:p-4">
+      {/* Container */}
+      <div className="bg-white w-full max-w-md rounded-t-[2.5rem] sm:rounded-[2.5rem] overflow-hidden shadow-2xl shadow-blue-900/20 transform transition-all animate-[slideUp_0.3s_ease-out] flex flex-col max-h-[90vh] sm:max-h-[85vh]">
         
-        {/* Header (Fixed) */}
-        <div className="bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-700 px-6 py-6 relative overflow-hidden flex-shrink-0">
-          <div className="absolute inset-0 opacity-10">
-            <div className="absolute top-0 left-0 w-32 h-32 bg-white rounded-full -translate-x-16 -translate-y-16"></div>
-          </div>
-
-          <div className="absolute top-6 right-6 flex items-center justify-center">
-            <div className="relative w-14 h-14 flex items-center justify-center">
-              <svg className="w-full h-full transform -rotate-90">
-                <circle cx="28" cy="28" r="24" stroke="rgba(255,255,255,0.2)" strokeWidth="4" fill="transparent" />
-                <circle
-                  cx="28" cy="28" r="24" stroke="white" strokeWidth="5" fill="transparent"
-                  strokeDasharray={150.8}
-                  strokeDashoffset={150.8 * (1 - countdown / 10)}
-                  strokeLinecap="round"
-                  className="transition-all duration-1000 ease-linear"
-                />
-              </svg>
-              <span className="absolute text-white font-black text-lg">{countdown}</span>
-            </div>
-          </div>
-
-          <div className="relative flex items-center gap-4">
-            <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center shadow-lg">
-              <FaCar className="text-blue-600 text-3xl" />
-            </div>
-            <div className="flex-1">
-              <h2 className="text-2xl font-bold text-white mb-0.5 tracking-tight">New Ride!</h2>
-              <p className="text-blue-100 text-sm flex items-center gap-2">
-                <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse shadow-[0_0_8px_rgba(74,222,128,0.8)]"></span>
-                Action Required
-              </p>
-            </div>
-          </div>
+        {/* Progress Bar (Top Edge) */}
+        <div className="w-full h-1.5 bg-gray-100">
+          <div 
+            className="h-full bg-blue-600 transition-all duration-1000 ease-linear"
+            style={{ width: `${progressPercent}%` }}
+          />
         </div>
 
-        {/* Body (Scrollable) */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-6 bg-gradient-to-b from-gray-50/50 to-white">
-          {/* Passenger */}
-          <div className="flex items-center gap-4 p-5 bg-white rounded-3xl shadow-sm border border-gray-100">
-            <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl flex items-center justify-center text-white font-bold text-2xl shadow-lg">
-              {(rideData.passengerName || rideData.passengerDetails?.name || 'P').charAt(0)}
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="font-extrabold text-gray-900 text-xl truncate">{rideData.passengerName || rideData.passengerDetails?.name || 'Passenger'}</p>
-              <p className="text-sm font-medium text-gray-500 flex items-center gap-2 mt-1">
-                <FaPhone className="text-green-600" size={12} />
-                {rideData.passengerPhone || rideData.passengerDetails?.phone || 'N/A'}
-              </p>
-            </div>
-          </div>
+        {/* Premium Header Map/Hero Area */}
+        <div className="relative bg-gray-900 px-6 py-8 text-center flex-shrink-0 overflow-hidden">
+           {/* Subtle background glow */}
+           <div className="absolute top-0 left-1/2 -translate-x-1/2 w-48 h-48 bg-blue-600 rounded-full blur-[80px] opacity-40 pointer-events-none"></div>
+           
+           <div className="relative z-10 flex flex-col items-center justify-center">
+             <div className="w-24 h-24 rounded-full border-[4px] border-gray-800 bg-gray-900/80 backdrop-blur-md shadow-[0_0_30px_rgba(37,99,235,0.4)] flex items-center justify-center relative mb-4">
+               <span className="text-4xl font-black text-white">{countdown}</span>
+               <svg className="absolute inset-0 w-full h-full -rotate-90">
+                  <circle cx="44" cy="44" r="42" stroke="rgba(255,255,255,0.05)" strokeWidth="4" fill="transparent" />
+                  <circle
+                    cx="44" cy="44" r="42" stroke="#3b82f6" strokeWidth="4" fill="transparent"
+                    strokeDasharray={263.89}
+                    strokeDashoffset={263.89 * (1 - countdown / 15)}
+                    strokeLinecap="round"
+                    className="transition-all duration-1000 ease-linear drop-shadow-[0_0_8px_rgba(59,130,246,0.8)]"
+                  />
+               </svg>
+             </div>
+             <h2 className="text-2xl font-black text-white tracking-tight">New Ride Request</h2>
+             <div className="flex items-center gap-3 mt-2">
+                <span className="px-3 py-1 bg-white/10 text-blue-300 rounded-full text-[10px] font-black uppercase tracking-widest">{rideData.rideType || 'Private'}</span>
+                <span className="w-1 h-1 bg-gray-500 rounded-full"></span>
+                <span className="text-gray-300 text-sm font-bold">{(rideData.distance || 0)} KM</span>
+             </div>
+           </div>
+        </div>
 
-          {/* Route */}
-          <div className="relative space-y-1 px-1">
-            <div className="absolute left-[31px] top-[48px] bottom-[48px] w-0.5 border-l-[3px] border-dashed border-blue-100 z-0"></div>
-
-            <div className="relative z-10 flex items-start gap-4 p-4 bg-green-50/40 rounded-2xl border border-green-100/50">
-              <div className="mt-1 p-2.5 bg-green-500 rounded-xl shadow-lg">
-                <Navigation className="text-white" size={16} />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-[10px] font-black text-green-700 uppercase tracking-widest mb-1 opacity-70">Pickup</p>
-                <p className="text-[15px] font-bold text-gray-900 leading-tight">{rideData.pickup || rideData.pickupLocation || '—'}</p>
-              </div>
-            </div>
-
-            {rideData.stops && rideData.stops.length > 0 && (
-              <div className="space-y-1 ml-1.5">
-                {rideData.stops.map((stop, sIdx) => (
-                  <div key={sIdx} className="relative z-10 flex items-start gap-4 p-3 bg-orange-50/20 rounded-2xl border border-orange-100/30">
-                    <div className="mt-0.5 w-7 h-7 bg-orange-500 rounded-full flex items-center justify-center text-xs text-white font-black shadow-md">
-                      {sIdx + 1}
-                    </div>
-                    <div className="flex-1 min-w-0 pt-0.5">
-                      <p className="text-[9px] font-bold text-orange-700 uppercase tracking-wide opacity-80">Stop {sIdx + 1}</p>
-                      <p className="text-sm font-semibold text-gray-700 leading-snug">{stop.address || stop.location || '—'}</p>
-                    </div>
+        {/* Scrollable Body */}
+        <div className="flex-1 overflow-y-auto bg-gray-50/50">
+          
+          {/* Fare & Stats Block */}
+          <div className="bg-white px-6 py-5 border-b border-gray-100 flex justify-between items-center shadow-sm relative z-10">
+             <div>
+                <p className="text-[10px] text-gray-400 font-black uppercase tracking-widest mb-1">Est. Fare</p>
+                <p className="text-4xl font-black text-emerald-500 tracking-tighter drop-shadow-sm">₹{rideData.fare || 0}</p>
+             </div>
+             <div className="text-right">
+                <p className="text-[10px] text-gray-400 font-black uppercase tracking-widest mb-2">Passenger</p>
+                <div className="flex items-center justify-end gap-2.5">
+                  <p className="font-bold text-gray-800 text-lg">{rideData.passengerName || rideData.passengerDetails?.name || 'Passenger'}</p>
+                  <div className="w-10 h-10 rounded-full bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-600 shadow-inner">
+                    <FaUserAlt size={14} />
                   </div>
-                ))}
-              </div>
-            )}
+                </div>
+             </div>
+          </div>
 
-            <div className="relative z-10 flex items-start gap-4 p-4 bg-red-50/40 rounded-2xl border border-red-100/50">
-              <div className="mt-1 p-2.5 bg-red-500 rounded-xl shadow-lg">
-                <MapPin className="text-white" size={16} />
+          {/* Location Timeline */}
+          <div className="px-8 py-8">
+            <div className="relative">
+              {/* Vertical Line */}
+              <div className="absolute left-[11px] top-4 bottom-4 w-0.5 bg-gray-200 rounded-full"></div>
+
+              {/* Pickup */}
+              <div className="relative flex items-start gap-5 mb-8">
+                <div className="relative z-10 w-6 h-6 rounded-full bg-emerald-100 border-[3px] border-emerald-500 flex items-center justify-center mt-0.5 shadow-sm ring-4 ring-white">
+                  <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
+                </div>
+                <div className="flex-1">
+                  <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest mb-1 opacity-80">Pickup</p>
+                  <p className="text-base font-bold text-gray-800 leading-snug">{rideData.pickup || rideData.pickupLocation || '—'}</p>
+                </div>
               </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-[10px] font-black text-red-700 uppercase tracking-widest mb-1 opacity-70">Destination</p>
-                <p className="text-[15px] font-bold text-gray-900 leading-tight">{rideData.drop || rideData.destination || '—'}</p>
+
+              {/* Stops (if any) */}
+              {rideData.stops && rideData.stops.map((stop, idx) => (
+                <div key={idx} className="relative flex items-start gap-5 mb-8">
+                  <div className="relative z-10 w-6 h-6 rounded-full bg-orange-100 border-[3px] border-orange-500 flex items-center justify-center mt-0.5 ring-4 ring-white">
+                    <span className="text-[10px] font-black text-orange-600">{idx + 1}</span>
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-[10px] font-black text-orange-600 uppercase tracking-widest mb-1 opacity-80">Stop {idx + 1}</p>
+                    <p className="text-sm font-bold text-gray-700 leading-snug">{stop.address || stop.location || '—'}</p>
+                  </div>
+                </div>
+              ))}
+
+              {/* Dropoff */}
+              <div className="relative flex items-start gap-5">
+                <div className="relative z-10 w-6 h-6 rounded-full bg-red-100 border-[3px] border-red-500 flex items-center justify-center mt-0.5 shadow-sm ring-4 ring-white">
+                  <div className="w-2 h-2 bg-red-500 rounded-full"></div>
+                </div>
+                <div className="flex-1">
+                  <p className="text-[10px] font-black text-red-600 uppercase tracking-widest mb-1 opacity-80">Dropoff</p>
+                  <p className="text-base font-bold text-gray-800 leading-snug">{rideData.drop || rideData.destination || '—'}</p>
+                </div>
               </div>
+
             </div>
           </div>
 
-          {/* Stats */}
-          <div className="grid grid-cols-3 gap-3">
-            <div className="bg-white rounded-3xl p-4 text-center border border-gray-100 shadow-sm">
-              <p className="text-lg font-black text-emerald-600 italic">₹{rideData.fare || 0}</p>
-              <p className="text-[9px] text-gray-400 font-bold uppercase tracking-wider">Fare</p>
-            </div>
-            <div className="bg-white rounded-3xl p-4 text-center border border-gray-100 shadow-sm">
-              <p className="text-lg font-black text-blue-600">{rideData.distance || 0}</p>
-              <p className="text-[9px] text-gray-400 font-bold uppercase tracking-wider">KM</p>
-            </div>
-            <div className="bg-white rounded-3xl p-4 text-center border border-gray-100 shadow-sm">
-              <p className="text-xs font-black text-purple-600 uppercase truncate">{rideData.rideType || 'Private'}</p>
-              <p className="text-[9px] text-gray-400 font-bold uppercase tracking-wider">Type</p>
-            </div>
-          </div>
         </div>
 
-        {/* Footer (Sticky) */}
-        <div className="px-6 py-6 pb-8 sm:pb-6 flex gap-4 bg-white border-t border-gray-100 flex-shrink-0">
-          <button
+        {/* Action Buttons */}
+        <div className="p-4 sm:p-6 bg-white border-t border-gray-100 flex gap-3 flex-shrink-0 pb-8 sm:pb-6">
+          <button 
             onClick={onReject}
-            className="flex-1 py-4 bg-gray-50 hover:bg-gray-100 text-gray-600 rounded-2xl font-bold transition-all border border-gray-200 active:scale-95"
+            className="flex-1 py-4 px-2 rounded-2xl bg-gray-100 hover:bg-gray-200 text-gray-500 font-black text-sm uppercase tracking-wider transition-all focus:ring-4 focus:ring-gray-100 active:scale-[0.98]"
           >
             Reject
           </button>
-          <button
+          <button 
             onClick={onAccept}
-            className="flex-[2] py-4 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-2xl font-black text-lg transition-all active:scale-95 shadow-xl shadow-green-500/20"
+            className="flex-[2.5] py-4 px-2 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-black text-lg shadow-[0_8px_25px_-8px_rgba(37,99,235,0.6)] transition-all focus:ring-4 focus:ring-blue-200 active:scale-[0.98] flex items-center justify-center gap-3"
           >
-            Accept Ride
+            <FaCarSide size={22} className="opacity-90" />
+            ACCEPT RIDE
           </button>
         </div>
+
       </div>
     </div>
   );

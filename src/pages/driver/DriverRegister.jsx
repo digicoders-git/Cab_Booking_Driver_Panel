@@ -79,6 +79,7 @@ export default function DriverRegister() {
     accountHolderName: prefill?.bankDetails?.accountHolderName || '',
     bankName: prefill?.bankDetails?.bankName || '',
     // Car Details
+    vehicleType: prefill?.carDetails?.vehicleType || 'Car',
     carNumber: prefill?.carDetails?.carNumber || '',
     carModel: prefill?.carDetails?.carModel || '',
     carBrand: prefill?.carDetails?.carBrand || '',
@@ -210,12 +211,12 @@ export default function DriverRegister() {
       if (!form.bankName.trim()) errs.bankName = 'Bank name required';
     }
     if (step === 3) {
-      if (!form.carNumber.trim()) errs.carNumber = 'Car number required';
-      if (!form.carModel.trim()) errs.carModel = 'Car model required';
-      if (!form.carBrand.trim()) errs.carBrand = 'Car brand required';
-      if (!form.carType.trim()) errs.carType = 'Car type required';
-      if (!form.seatCapacity) errs.seatCapacity = 'Seat capacity required';
-      if (!form.carColor.trim()) errs.carColor = 'Car color required';
+      if (!form.carNumber.trim()) errs.carNumber = 'Vehicle number required';
+      if (!form.carModel.trim()) errs.carModel = 'Vehicle model required';
+      if (!form.carBrand.trim()) errs.carBrand = 'Vehicle brand required';
+      if (form.vehicleType === 'Car' && !form.carType.trim()) errs.carType = 'Vehicle category required';
+      if (form.vehicleType === 'Car' && !form.seatCapacity) errs.seatCapacity = 'Seat capacity required';
+      if (!form.carColor.trim()) errs.carColor = 'Vehicle color required';
       if (!form.manufacturingYear) errs.manufacturingYear = 'Manufacturing year required';
     }
     if (step === 4) {
@@ -368,23 +369,41 @@ export default function DriverRegister() {
 
           {step === 3 && (
             <div className="space-y-4">
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">Vehicle Type</label>
+                <div className="flex gap-4">
+                  <label className={`flex-1 flex items-center justify-center gap-2 p-3 border rounded-xl cursor-pointer transition-all ${form.vehicleType === 'Car' ? 'border-blue-600 bg-blue-50 text-blue-700' : 'border-gray-200 hover:bg-gray-50'}`}>
+                    <input type="radio" name="vehicleType" value="Car" checked={form.vehicleType === 'Car'} onChange={handleChange} className="hidden" />
+                    <FaCar size={18} />
+                    <span className="font-medium">Car</span>
+                  </label>
+                  <label className={`flex-1 flex items-center justify-center gap-2 p-3 border rounded-xl cursor-pointer transition-all ${form.vehicleType === 'Bike' ? 'border-blue-600 bg-blue-50 text-blue-700' : 'border-gray-200 hover:bg-gray-50'}`}>
+                    <input type="radio" name="vehicleType" value="Bike" checked={form.vehicleType === 'Bike'} onChange={handleChange} className="hidden" />
+                    <span className="text-xl">🏍️</span>
+                    <span className="font-medium">Bike</span>
+                  </label>
+                </div>
+              </div>
+
               <div className="grid grid-cols-2 gap-4">
-                <InputField label="Car Number" name="carNumber" icon={FaCar} value={form.carNumber} onChange={handleChange} error={errors.carNumber} />
-                <InputField label="Car Model" name="carModel" value={form.carModel} onChange={handleChange} error={errors.carModel} />
+                <InputField label="Vehicle Number" name="carNumber" icon={FaCar} value={form.carNumber} onChange={handleChange} error={errors.carNumber} />
+                <InputField label="Vehicle Model" name="carModel" value={form.carModel} onChange={handleChange} error={errors.carModel} />
               </div>
               <div className="grid grid-cols-2 gap-4">
-                <InputField label="Car Brand" name="carBrand" value={form.carBrand} onChange={handleChange} error={errors.carBrand} />
-                <InputField label="Car Color" name="carColor" value={form.carColor} onChange={handleChange} error={errors.carColor} />
+                <InputField label="Vehicle Brand" name="carBrand" value={form.carBrand} onChange={handleChange} error={errors.carBrand} />
+                <InputField label="Vehicle Color" name="carColor" value={form.carColor} onChange={handleChange} error={errors.carColor} />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <InputField label="Manufacturing Year" name="manufacturingYear" type="number" value={form.manufacturingYear} onChange={handleChange} error={errors.manufacturingYear} />
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Car Type</label>
-                  <select name="carType" value={form.carType} onChange={handleChange} className="w-full px-4 py-2.5 border rounded-xl bg-white text-sm">
-                    <option value="">Select a car type</option>
-                    {carCategories.map(cat => <option key={cat._id} value={cat._id}>{cat.name}</option>)}
-                  </select>
-                </div>
+                {form.vehicleType === 'Car' && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Vehicle Type (Category)</label>
+                    <select name="carType" value={form.carType} onChange={handleChange} className="w-full px-4 py-2.5 border rounded-xl bg-white text-sm">
+                      <option value="">Select a category</option>
+                      {carCategories.map(cat => <option key={cat._id} value={cat._id}>{cat.name}</option>)}
+                    </select>
+                  </div>
+                )}
               </div>
             </div>
           )}

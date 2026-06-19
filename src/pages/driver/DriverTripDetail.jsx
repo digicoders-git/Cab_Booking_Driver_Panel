@@ -120,15 +120,51 @@ export default function DriverTripDetail() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get('success') === 'true') {
-      toast.success("Payment verified! Trip Completed.");
-      // Clean up URL
       window.history.replaceState({}, '', window.location.pathname);
-      navigate('/dashboard');
+      
+      const showSuccessAlert = async () => {
+        let finalFare = 0;
+        try {
+          const res = await driverService.getMyTrips();
+          const trips = res?.trips || res || [];
+          const found = trips.find(t => t._id.endsWith(shortId));
+          if (found) {
+            finalFare = found.actualFare || found.fareEstimate || 0;
+          }
+        } catch (err) {
+          console.error('Error fetching final fare:', err);
+        }
+
+        await Swal.fire({
+          icon: 'success',
+          title: '✅ Payment Verified!',
+          html: `<div class="p-4 bg-green-50 rounded-2xl border border-green-100 mb-2">
+                   <p class="text-gray-600">Online Payment Received Successfully</p>
+                   <p class="text-4xl font-black text-green-600 mt-1">₹${finalFare}</p>
+                 </div>`,
+          confirmButtonColor: '#10B981',
+          confirmButtonText: 'Back to Dashboard',
+          allowOutsideClick: false
+        });
+        navigate('/dashboard');
+      };
+      
+      showSuccessAlert();
     } else if (params.get('error')) {
-      toast.error(decodeURIComponent(params.get('error')));
+      const errorMsg = decodeURIComponent(params.get('error'));
       window.history.replaceState({}, '', window.location.pathname);
+      
+      Swal.fire({
+        icon: 'error',
+        title: '❌ Payment Failed',
+        text: errorMsg || 'Something went wrong with the online payment.',
+        confirmButtonColor: '#EF4444',
+        confirmButtonText: 'OK',
+        allowOutsideClick: false
+      });
     }
-  }, [navigate]);
+  }, [navigate, shortId]);
+
 
   const formatTime = (totalSeconds) => {
     const mins = Math.floor(totalSeconds / 60);
