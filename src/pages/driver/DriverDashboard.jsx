@@ -662,6 +662,11 @@ export default function DriverDashboard() {
                         <div className="flex items-center gap-2">
                             <p className="font-bold text-gray-900">Trip to {job.drop?.address?.split(',')[0]}</p>
                             <span className="px-2 py-0.5 bg-blue-600 text-white text-[9px] font-black rounded-full uppercase tracking-tighter">Bulk</span>
+                            {job.isOutstation && (
+                                <span className="px-2 py-0.5 bg-red-600 text-white text-[9px] font-black rounded-full uppercase tracking-tighter flex items-center gap-1">
+                                    <FaRoute size={8} /> OUTSTATION
+                                </span>
+                            )}
                         </div>
                         <p className="text-xs text-gray-500 mt-1 flex items-center gap-1">
                             <MapPin size={10} /> {job.pickup?.address}

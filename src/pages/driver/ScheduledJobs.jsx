@@ -4,7 +4,7 @@ import { driverService } from '../../api/driverApi';
 import { toast } from 'sonner';
 import { 
     FaLayerGroup, FaCalendarAlt, FaMapMarkerAlt, FaCar, 
-    FaClock, FaChevronRight, FaInfoCircle 
+    FaClock, FaChevronRight, FaInfoCircle, FaRoad 
 } from 'react-icons/fa';
 import { MapPin, Navigation, Calendar, Clock, DollarSign } from 'lucide-react';
 import Swal from 'sweetalert2';
@@ -310,6 +310,11 @@ export default function ScheduledJobs() {
                                                 Bulk Trip
                                             </span>
                                             <span className="text-xs font-bold text-gray-400">ID: #{job._id.slice(-8)}</span>
+                                            {job.isOutstation && (
+                                                <span className="px-3 py-1 bg-red-100 text-red-600 border border-red-200 rounded-full text-[10px] font-black uppercase tracking-widest flex items-center gap-1">
+                                                    <FaRoad size={10} /> OUTSTATION
+                                                </span>
+                                            )}
                                         </div>
                                         <div className="flex items-center gap-2 text-green-600 font-bold">
                                             <DollarSign size={16} />
@@ -334,6 +339,16 @@ export default function ScheduledJobs() {
                                             <p className="text-sm font-bold text-gray-900 leading-tight">{job.drop?.address}</p>
                                         </div>
                                     </div>
+
+                                    {job.isOutstation && (
+                                        <div className="mt-4 p-3 bg-red-50 border border-red-100 rounded-xl flex items-start gap-2">
+                                            <FaInfoCircle className="text-red-500 mt-0.5 shrink-0" />
+                                            <div>
+                                                <p className="text-xs font-bold text-red-700 uppercase">Outstation Ride</p>
+                                                <p className="text-[10px] text-red-600 mt-0.5">Please collect State/Toll Tax directly from the rider during the trip. This is not included in the prepaid amount.</p>
+                                            </div>
+                                        </div>
+                                    )}
 
                                     {/* Footer Info */}
                                     <div className="pt-6 border-t border-gray-50 flex flex-wrap items-center gap-6">
