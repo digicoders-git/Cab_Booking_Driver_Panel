@@ -35,3 +35,17 @@ export const completeAgentLead = async (leadId) => {
     const response = await agentLeadApi.post(`/agent-leads/${leadId}/complete`);
     return response.data;
 };
+
+export const downloadAgentLeadReceipt = async (leadId) => {
+    const response = await agentLeadApi.get(`/agent-leads/receipt/${leadId}`, {
+        responseType: 'blob'
+    });
+    return response.data;
+};
+
+export const downloadDriverCommissionReceipt = async (leadId) => {
+    const response = await agentLeadApi.get(`/agent-leads/driver-receipt/${leadId}`, {
+        responseType: 'blob'
+    });
+    return response.data;
+};

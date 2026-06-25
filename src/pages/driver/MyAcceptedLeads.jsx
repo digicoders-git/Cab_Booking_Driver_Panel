@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from "react";
-import { getMyAcceptedLeads, completeAgentLead } from "../../api/agentLeadApi";
+import { getMyAcceptedLeads, completeAgentLead, downloadAgentLeadReceipt, downloadDriverCommissionReceipt } from "../../api/agentLeadApi";
 import Swal from "sweetalert2";
-import { FaSyncAlt, FaMapMarkerAlt, FaCheckCircle, FaRupeeSign, FaCalendarAlt, FaUserTie, FaPhoneAlt } from "react-icons/fa";
+import { toast } from "sonner";
+import { FaSyncAlt, FaMapMarkerAlt, FaCheckCircle, FaRupeeSign, FaCalendarAlt, FaUserTie, FaPhoneAlt, FaDownload, FaFileInvoiceDollar } from "react-icons/fa";
 import { useLocation, useNavigate } from "react-router-dom";
 
 export default function MyAcceptedLeads() {
@@ -68,6 +69,48 @@ export default function MyAcceptedLeads() {
       } catch (err) {
         Swal.fire('Error!', err.response?.data?.message || 'Server error', 'error');
       }
+    }
+  };
+
+  const handleDownloadReceipt = async (leadId) => {
+    try {
+      toast.loading("Generating receipt...");
+      const blob = await downloadAgentLeadReceipt(leadId);
+      const url = window.URL.createObjectURL(new Blob([blob], { type: 'application/pdf' }));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `KwikCabs_Receipt_${leadId.toString().slice(-6).toUpperCase()}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      toast.dismiss();
+      toast.success("Customer receipt downloaded successfully!");
+    } catch (error) {
+      toast.dismiss();
+      console.error("Receipt generation failed:", error);
+      toast.error("Failed to download customer receipt.");
+    }
+  };
+
+  const handleDownloadCommissionReceipt = async (leadId) => {
+    try {
+      toast.loading("Generating commission receipt...");
+      const blob = await downloadDriverCommissionReceipt(leadId);
+      const url = window.URL.createObjectURL(new Blob([blob], { type: 'application/pdf' }));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `KwikCabs_Commission_${leadId.toString().slice(-6).toUpperCase()}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      toast.dismiss();
+      toast.success("Commission receipt downloaded successfully!");
+    } catch (error) {
+      toast.dismiss();
+      console.error("Commission Receipt generation failed:", error);
+      toast.error("Failed to download commission receipt.");
     }
   };
 
@@ -184,16 +227,21 @@ export default function MyAcceptedLeads() {
                     </td>
 
                     {/* Actions */}
-                    <td className="py-4 px-6 text-center align-top">
-                      {lead.status !== 'Completed' && lead.status !== 'Cancelled' ? (
+                    <td className="py-4 px-6 text-center align-top space-y-2">
+                      <button
+                        onClick={() => handleDownloadReceipt(lead._id)}
+                        className="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors shadow-sm flex items-center justify-center gap-2"
+                      >
+                        <FaDownload /> Download Receipt
+                      </button>
+
+                      {lead.status !== 'Completed' && lead.status !== 'Cancelled' && (
                         <button
                           onClick={() => handleCompleteLead(lead._id)}
-                          className="w-full px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-lg transition-colors shadow-sm flex items-center justify-center gap-2"
+                          className="w-full px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-lg transition-colors shadow-sm flex items-center justify-center gap-2 mt-4"
                         >
                           <FaCheckCircle /> Complete Trip
                         </button>
-                      ) : (
-                        <span className="text-sm font-medium text-gray-400 italic">No actions needed</span>
                       )}
                     </td>
 
