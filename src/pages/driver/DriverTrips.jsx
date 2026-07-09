@@ -4,6 +4,7 @@ import { driverService } from '../../api/driverApi';
 import { toast } from 'sonner';
 import { FaCar, FaHistory, FaSearch, FaEye, FaChevronLeft, FaChevronRight, FaRoute, FaStar } from 'react-icons/fa';
 import { MapPin, Navigation, DollarSign, Award, X, ChevronsLeft, ChevronsRight, Clock, AlertCircle, CheckCircle, Ban } from 'lucide-react';
+import RateUserModal from '../../components/RateUserModal';
 
 const CHART_COLORS = { primary: '#3B82F6', success: '#10B981', warning: '#F59E0B', danger: '#EF4444', purple: '#8B5CF6' };
 
@@ -27,6 +28,7 @@ export default function DriverTrips() {
   const [filter, setFilter] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [rateModalBooking, setRateModalBooking] = useState(null);
 
   useEffect(() => { fetchTrips(); }, []);
 
@@ -216,11 +218,35 @@ export default function DriverTrips() {
                               {status.label}
                             </span>
                           </td>
-                          <td className="px-6 py-4 text-center">
-                            <button onClick={() => navigate(`/driver/trip/${trip._id.slice(-8)}`)}
-                              className="p-2 hover:bg-gray-100 rounded-lg text-blue-600 transition-all">
-                              <FaEye size={16} />
-                            </button>
+                          <td className="px-6 py-4">
+                            <div className="flex items-center justify-center gap-2">
+                              {/* View Details Button */}
+                              <button 
+                                onClick={() => navigate(`/driver/trip/${trip._id}`)}
+                                className="p-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-600 hover:text-white transition-colors"
+                                title="View Details"
+                              >
+                                <FaEye />
+                              </button>
+                              
+                              {/* Rate User Button */}
+                              {(trip.status || trip.bookingStatus)?.toLowerCase() === 'completed' && !trip.userRating && (
+                                <button
+                                    onClick={() => setRateModalBooking(trip._id)}
+                                    className="p-2 bg-yellow-50 text-yellow-600 rounded-lg hover:bg-yellow-500 hover:text-white transition-colors flex items-center gap-1"
+                                    title="Rate Passenger"
+                                >
+                                    <FaStar />
+                                </button>
+                              )}
+                              
+                              {/* Already Rated Badge */}
+                              {(trip.status || trip.bookingStatus)?.toLowerCase() === 'completed' && trip.userRating && (
+                                <div className="p-2 px-3 bg-gray-50 border border-gray-200 text-gray-500 rounded-lg flex items-center gap-1 text-xs font-bold" title="You rated this passenger">
+                                    <FaStar className="text-yellow-400" /> {trip.userRating}
+                                </div>
+                              )}
+                            </div>
                           </td>
                         </tr>
                       );
@@ -270,6 +296,16 @@ export default function DriverTrips() {
           </div>
         </div>
       </div>
+      
+      <RateUserModal 
+        isOpen={!!rateModalBooking}
+        bookingId={rateModalBooking}
+        onClose={() => setRateModalBooking(null)}
+        onSuccess={() => {
+            setRateModalBooking(null);
+            fetchTrips();
+        }}
+      />
     </div>
   );
 }

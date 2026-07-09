@@ -97,6 +97,10 @@ export const driverService = {
     const trips = response.data?.trips || response.data || [];
     return trips.find(t => t._id === bookingId) || null;
   },
+  rateUser: async (bookingId, rating, review) => {
+    const response = await driverApi.post(`/bookings/${bookingId}/rate-user`, { rating, review });
+    return response.data;
+  },
   getMyTrips: async () => {
     const response = await driverApi.get('/trips/driver/my-trips');
     return response.data;

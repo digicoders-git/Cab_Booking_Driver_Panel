@@ -226,6 +226,25 @@ export default function ScheduledJobs() {
         }
     };
 
+    const handleOpenMap = (job) => {
+        let url = '';
+        if (job.pickup?.coordinates && job.drop?.coordinates) {
+            // MongoDB GeoJSON coordinates are [longitude, latitude]
+            const originLat = job.pickup.coordinates[1] || job.pickup.lat;
+            const originLng = job.pickup.coordinates[0] || job.pickup.lng;
+            const destLat = job.drop.coordinates[1] || job.drop.lat;
+            const destLng = job.drop.coordinates[0] || job.drop.lng;
+            if (originLat && originLng && destLat && destLng) {
+                url = `https://www.google.com/maps/dir/?api=1&origin=${originLat},${originLng}&destination=${destLat},${destLng}`;
+            } else {
+                url = `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(job.pickup?.address)}&destination=${encodeURIComponent(job.drop?.address)}`;
+            }
+        } else {
+            url = `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(job.pickup?.address)}&destination=${encodeURIComponent(job.drop?.address)}`;
+        }
+        window.open(url, '_blank');
+    };
+
     if (loading) {
         return (
             <div className="flex items-center justify-center min-h-[60vh]">
@@ -393,8 +412,33 @@ export default function ScheduledJobs() {
                                         </div>
                                     )}
                                     <button 
+                                        className="w-full py-3 bg-indigo-600 text-white rounded-xl text-xs font-bold shadow-lg shadow-indigo-200 hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-2"
+                                        onClick={() => handleOpenMap(job)}
+                                    >
+                                        <Navigation size={14} /> Open Map
+                                    </button>
+                                    <button 
                                         className="w-full py-3 bg-white border border-gray-200 text-gray-700 rounded-xl text-xs font-bold hover:bg-gray-100 transition-all flex items-center justify-center gap-2"
-                                        onClick={() => toast.info("Full route details will be available on the day of trip.")}
+                                        onClick={() => {
+                                            Swal.fire({
+                                                title: 'Route Details',
+                                                html: `
+                                                    <div class="text-left space-y-4">
+                                                        <p><strong>Pickup:</strong> ${job.pickup?.address}</p>
+                                                        <p><strong>Drop:</strong> ${job.drop?.address}</p>
+                                                        <p class="text-sm text-gray-500 mt-2">Niche diye gaye button par click karke aap map me rasta dekh sakte hain.</p>
+                                                    </div>
+                                                `,
+                                                icon: 'info',
+                                                showCancelButton: true,
+                                                confirmButtonText: 'View on Google Map',
+                                                confirmButtonColor: '#2563eb'
+                                            }).then((result) => {
+                                                if (result.isConfirmed) {
+                                                    handleOpenMap(job);
+                                                }
+                                            });
+                                        }}
                                     >
                                         <FaInfoCircle /> Details
                                     </button>

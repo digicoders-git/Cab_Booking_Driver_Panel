@@ -1,15 +1,16 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { driverService } from '../../api/driverApi';
 import { toast } from 'sonner';
 import Swal from 'sweetalert2';
 import OptimizedTripMap from '../../components/OptimizedTripMap';
 import {
-  FaUser, FaPhone, FaMapMarkerAlt, FaRoute, FaClock,
-  FaCheckCircle, FaRupeeSign, FaArrowLeft, FaSync,
-  FaPlay, FaStop, FaKey, FaCar, FaTaxi, FaTimesCircle, FaExclamationTriangle
+  FaArrowLeft, FaPhoneAlt, FaPhone, FaMapMarkerAlt, FaCar,
+  FaRupeeSign, FaTimesCircle, FaKey, FaClock, FaCheckCircle,
+  FaExclamationTriangle, FaStop, FaStar, FaUser, FaRoute, FaSync, FaPlay, FaTaxi
 } from 'react-icons/fa';
-import { Navigation, MapPin } from 'lucide-react';
+import { MapPin, Navigation } from 'lucide-react';
+import RateUserModal from '../../components/RateUserModal';
 import { getSocket } from '../../socket/socket';
 
 export default function DriverTripDetail() {
@@ -23,8 +24,18 @@ export default function DriverTripDetail() {
   const [bookingId, setBookingId] = useState(null);
   const [waitingSeconds, setWaitingSeconds] = useState(0);
   const [liveLocation, setLiveLocation] = useState(null);
+  const [activeStopIndex, setActiveStopIndex] = useState(null);
+  const [isRateModalOpen, setIsRateModalOpen] = useState(false);
+  const hasPromptedRating = useRef(false);
 
-  // Handle location updates from OptimizedTripMap
+  useEffect(() => {
+    if (trip && trip.bookingStatus === 'Completed' && !trip.userRating && !hasPromptedRating.current) {
+        setIsRateModalOpen(true);
+        hasPromptedRating.current = true;
+    }
+  }, [trip]);
+
+  // Poll driver API for specific trip updates from OptimizedTripMap
   const handleLocationUpdate = useCallback((locationData) => {
     setLiveLocation(locationData);
     console.log('📍 Live location update:', locationData);
@@ -56,14 +67,14 @@ export default function DriverTripDetail() {
     const socket = getSocket();
     if (socket) {
       console.log('📡 DriverTripDetail: socket listeners attached');
-      
+
       const handleUpdate = (data) => {
         console.log('🔔 Trip Event Received:', data);
         const incomingId = data.bookingId || data.id;
-        
+
         // Match using full ID or just the shortId from URL
-        const isTarget = (trip && trip._id === incomingId) || 
-                         (incomingId && (incomingId === bookingId || incomingId.endsWith(shortId)));
+        const isTarget = (trip && trip._id === incomingId) ||
+          (incomingId && (incomingId === bookingId || incomingId.endsWith(shortId)));
 
         if (isTarget) {
           if (data.status === 'Cancelled' || data.status === 'Expired') {
@@ -100,7 +111,7 @@ export default function DriverTripDetail() {
     let interval;
     const pickupArrived = trip?.tripData?.arrivedAt && trip?.bookingStatus === 'Accepted';
     const activeStop = (trip?.stops || []).find(s => s.status === 'Arrived');
-    
+
     const arrivedAt = pickupArrived ? trip.tripData.arrivedAt : (activeStop ? activeStop.arrivedAt : null);
 
     if (arrivedAt) {
@@ -121,7 +132,7 @@ export default function DriverTripDetail() {
     const params = new URLSearchParams(window.location.search);
     if (params.get('success') === 'true') {
       window.history.replaceState({}, '', window.location.pathname);
-      
+
       const showSuccessAlert = async () => {
         let finalFare = 0;
         try {
@@ -148,12 +159,12 @@ export default function DriverTripDetail() {
         });
         navigate('/dashboard');
       };
-      
+
       showSuccessAlert();
     } else if (params.get('error')) {
       const errorMsg = decodeURIComponent(params.get('error'));
       window.history.replaceState({}, '', window.location.pathname);
-      
+
       Swal.fire({
         icon: 'error',
         title: '❌ Payment Failed',
@@ -227,8 +238,8 @@ export default function DriverTripDetail() {
 
     const currentFare = trip?.actualFare || trip?.fareEstimate || 0;
     const baseFare = currentFare - totalWaitingCharges;
-    const totalWaitingTime = (trip?.tripData?.waitingTimeMin || 0) + 
-                             (trip?.stops || []).reduce((sum, stop) => sum + (stop.waitingTimeMin || 0), 0);
+    const totalWaitingTime = (trip?.tripData?.waitingTimeMin || 0) +
+      (trip?.stops || []).reduce((sum, stop) => sum + (stop.waitingTimeMin || 0), 0);
 
     const result = await Swal.fire({
       title: '🏁 End Trip?',
@@ -281,10 +292,10 @@ export default function DriverTripDetail() {
           // HDFC REDIRECT FLOW
           const paymentUrl = orderRes.paymentLinks?.web || orderRes.paymentLinks;
           if (paymentUrl) {
-              window.location.href = paymentUrl;
+            window.location.href = paymentUrl;
           } else {
-              toast.error("Invalid payment link received from HDFC");
-              setActionLoading(false);
+            toast.error("Invalid payment link received from HDFC");
+            setActionLoading(false);
           }
         } else {
           toast.error(orderRes.message || "Failed to initiate payment");
@@ -307,9 +318,9 @@ export default function DriverTripDetail() {
                      <p class="text-4xl font-black text-green-600 mt-1">₹${res.finalFare || currentFare}</p>
                    </div>`,
             confirmButtonColor: '#10B981',
-            confirmButtonText: 'Back to Dashboard'
+            confirmButtonText: 'Rate Passenger'
           });
-          navigate('/dashboard');
+          fetchTrip();
         }
       } catch (err) {
         toast.error("Failed to end trip");
@@ -731,8 +742,23 @@ export default function DriverTripDetail() {
 
         {/* Completed */}
         {isCompleted && (
-          <div className="w-full py-4 bg-green-50 border border-green-200 text-green-700 rounded-2xl font-bold text-lg flex items-center justify-center gap-3">
-            <FaCheckCircle size={18} /> Trip Completed!
+          <div className="space-y-3">
+            <div className="w-full py-4 bg-green-50 border border-green-200 text-green-700 rounded-2xl font-bold text-lg flex items-center justify-center gap-3">
+              <FaCheckCircle size={18} /> Trip Completed!
+            </div>
+            
+            {!trip?.userRating ? (
+              <button
+                onClick={() => setIsRateModalOpen(true)}
+                className="w-full py-3 bg-yellow-500 text-white rounded-2xl font-bold text-sm flex items-center justify-center gap-2 shadow-lg shadow-yellow-500/30 hover:bg-yellow-600 transition-all"
+              >
+                <FaStar size={16} /> Rate Passenger
+              </button>
+            ) : (
+              <div className="w-full py-3 bg-gray-50 border border-gray-200 text-gray-600 rounded-2xl font-bold text-sm flex items-center justify-center gap-2">
+                <FaStar className="text-yellow-500" size={16} /> You Rated Passenger {trip.userRating}/5
+              </div>
+            )}
           </div>
         )}
 
@@ -743,6 +769,16 @@ export default function DriverTripDetail() {
           <FaArrowLeft size={14} /> Back to Dashboard
         </button>
       </div>
-    </div>
+
+      <RateUserModal 
+        isOpen={isRateModalOpen}
+        bookingId={trip?._id}
+        onClose={() => setIsRateModalOpen(false)}
+        onSuccess={() => {
+            setIsRateModalOpen(false);
+            fetchTrip();
+        }}
+      />
+    </div >
   );
 }
