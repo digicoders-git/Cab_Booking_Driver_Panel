@@ -234,14 +234,30 @@ const DashboardLayout = () => {
       setRideRequest(null);
     };
 
+    const onRideCancelled = (data) => {
+      console.log('⏰ [GLOBAL] ride_request_cancelled received:', data);
+      setShowRideModal(false);
+      setRideRequest(null);
+      toast.error(data.message || 'Ride accepted by another driver', { duration: 4000 });
+    };
+
+    const onNewAgentLead = (data) => {
+      console.log('🚀 [GLOBAL] new_agent_lead received:', data);
+      toast.success(`🚀 New Agent Lead! Earn ₹${data.earning}. Check Marketplace!`, { duration: 8000 });
+    };
+
     socket.on('new_ride_request', onNewRequest);
     socket.on('ride_request_timeout', onRideTimeout);
+    socket.on('ride_request_cancelled', onRideCancelled);
+    socket.on('new_agent_lead', onNewAgentLead);
 
     return () => {
       // ✅ Specific removal, NOT global socket.off()
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       socket.off('new_ride_request', onNewRequest);
       socket.off('ride_request_timeout', onRideTimeout);
+      socket.off('ride_request_cancelled', onRideCancelled);
+      socket.off('new_agent_lead', onNewAgentLead);
       console.log('🔌 Cleaned up Layout listeners specifically');
     };
   }, [admin?._id]);

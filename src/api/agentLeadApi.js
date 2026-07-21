@@ -16,6 +16,19 @@ agentLeadApi.interceptors.request.use((config) => {
   return config;
 });
 
+agentLeadApi.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response && error.response.status === 401) {
+      localStorage.removeItem("driver_token");
+      localStorage.removeItem("driverToken");
+      localStorage.removeItem("driver_data");
+      window.location.href = "/login";
+    }
+    return Promise.reject(error);
+  }
+);
+
 export const getMarketplaceLeads = async () => {
     const response = await agentLeadApi.get("/agent-leads/marketplace");
     return response.data;

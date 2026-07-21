@@ -16,6 +16,20 @@ driverApi.interceptors.request.use((config) => {
   return config;
 });
 
+// Interceptor to handle 401 Unauthorized for Single Device Login
+driverApi.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response && error.response.status === 401) {
+      localStorage.removeItem("driver_token");
+      localStorage.removeItem("driverToken");
+      localStorage.removeItem("driver_data");
+      window.location.href = "/login";
+    }
+    return Promise.reject(error);
+  }
+);
+
 export const driverService = {
   register: async (formData) => {
     const response = await driverApi.post('/drivers/register', formData, {

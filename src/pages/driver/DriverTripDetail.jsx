@@ -154,10 +154,10 @@ export default function DriverTripDetail() {
                    <p class="text-4xl font-black text-green-600 mt-1">₹${finalFare}</p>
                  </div>`,
           confirmButtonColor: '#10B981',
-          confirmButtonText: 'Back to Dashboard',
+          confirmButtonText: 'OK',
           allowOutsideClick: false
         });
-        navigate('/dashboard');
+        // Removed navigate('/dashboard') as requested by user
       };
 
       showSuccessAlert();

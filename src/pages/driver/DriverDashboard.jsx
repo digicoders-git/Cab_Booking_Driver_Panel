@@ -225,6 +225,14 @@ export default function DriverDashboard() {
         fetchDashboardData();
         console.log('========================================\n');
       });
+
+      socket.on('ride_request_cancelled', (data) => {
+        console.log('\n❌ ========== SOCKET EVENT: ride_request_cancelled ==========');
+        console.log('📦 Cancelled Data:', data);
+        
+        fetchDashboardData();
+        console.log('========================================\n');
+      });
     };
     attachSocketListeners();
     

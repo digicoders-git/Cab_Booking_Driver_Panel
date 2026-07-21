@@ -264,23 +264,72 @@ export default function DriverDashboard() {
 
   // End Trip
   const handleEndTrip = async (bookingId) => {
+    const currentTrip = tripHistory.find(t => t._id === bookingId);
+    const amount = currentTrip?.actualFare || currentTrip?.fareEstimate || 0;
+
     const result = await Swal.fire({
-      title: 'End Trip?',
-      text: 'Are you sure you want to end this trip?',
-      icon: 'question',
+      title: 'Select Payment Method',
+      html: `
+        <div style="font-size: 16px; margin-bottom: 15px;">
+          Amount to Collect: <strong style="color: #10B981; font-size: 20px;">₹${amount}</strong>
+        </div>
+        <p style="color: #6B7280; margin-bottom: 20px;">How would you like to collect the payment?</p>
+      `,
       showCancelButton: true,
-      confirmButtonText: 'Yes, End Trip',
+      showDenyButton: true,
+      confirmButtonText: 'Cash',
+      denyButtonText: 'Online',
+      cancelButtonText: 'Cancel',
       confirmButtonColor: '#10B981',
-      cancelButtonText: 'Cancel'
+      denyButtonColor: '#3B82F6',
     });
 
-    if (!result.isConfirmed) return;
+    if (!result.isConfirmed && !result.isDenied) return;
 
     try {
-      const res = await driverService.endTrip(bookingId);
-      if (res.success) {
-        toast.success('Trip completed!');
-        fetchDashboardData();
+      if (result.isConfirmed) {
+        // Cash Flow
+        await Swal.fire({
+          title: 'Cash Payment',
+          text: `Please collect ₹${amount} in Cash from the user.`,
+          icon: 'info',
+          confirmButtonText: 'Collected',
+          confirmButtonColor: '#10B981',
+        });
+        const res = await driverService.endTrip(bookingId, 'Cash');
+        if (res.success) {
+          toast.success('Trip completed (Cash)!');
+          fetchDashboardData();
+        }
+      } else if (result.isDenied) {
+        // Online Flow
+        const onlineResult = await Swal.fire({
+          title: 'Online Payment',
+          text: `Payment of ₹${amount} will be paid online.`,
+          icon: 'info',
+          confirmButtonText: 'Next',
+          confirmButtonColor: '#3B82F6',
+          showCancelButton: true,
+          cancelButtonText: 'Cancel'
+        });
+        
+        if (!onlineResult.isConfirmed) return;
+        
+        try {
+          // Attempt to initiate Razorpay link if supported
+          if(driverService.initiateTripPayment) {
+             await driverService.initiateTripPayment(bookingId);
+             toast.info('Payment request sent to user!');
+          }
+        } catch (err) {
+          console.error("Online payment initiation failed:", err);
+        }
+
+        const res = await driverService.endTrip(bookingId, 'Online');
+        if (res.success) {
+          toast.success('Trip completed (Online)!');
+          fetchDashboardData();
+        }
       }
     } catch (err) {
       toast.error(err?.message || 'Failed to end trip');

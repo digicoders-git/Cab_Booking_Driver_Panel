@@ -415,6 +415,17 @@ export default function DriverNotifications() {
                               </span>
                             </div>
                             <p className="text-sm text-gray-600 leading-relaxed">{n.message}</p>
+                            
+                            {n.mediaUrl && (
+                              <div className="mt-3">
+                                {n.mediaUrl.match(/\.(mp4|webm|ogg)$/i) ? (
+                                  <video src={`${import.meta.env.VITE_API_BASE_URL?.replace(/\/api\/?$/, '').replace(/\/$/, '') || 'http://localhost:5000'}${n.mediaUrl}`} controls className="max-w-full max-h-60 rounded-lg shadow-sm border border-gray-200" />
+                                ) : (
+                                  <img src={`${import.meta.env.VITE_API_BASE_URL?.replace(/\/api\/?$/, '').replace(/\/$/, '') || 'http://localhost:5000'}${n.mediaUrl}`} alt="Attachment" className="max-w-full max-h-60 object-contain rounded-lg shadow-sm border border-gray-200" />
+                                )}
+                              </div>
+                            )}
+
                             <div className="flex items-center gap-3 mt-2">
                               <span className="text-xs text-gray-400 flex items-center gap-1">
                                 <FaRegClock size={10} />
@@ -426,7 +437,7 @@ export default function DriverNotifications() {
                             </div>
                           </div>
                           <button
-                            onClick={() => {/* Mark as read logic */ }}
+                            onClick={(e) => { e.stopPropagation(); /* Mark as read logic */ }}
                             className={`opacity-0 group-hover:opacity-100 transition-all p-1.5 rounded-lg ${!n.read ? 'hover:bg-blue-50 text-blue-600' : 'hover:bg-gray-100 text-gray-400'
                               }`}
                           >

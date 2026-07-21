@@ -16,6 +16,21 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+// Interceptor to handle 401 Unauthorized for Single Device Login
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response && error.response.status === 401) {
+      // Clear token and auto-logout on token expiration / concurrent login
+      localStorage.removeItem("driver_token");
+      localStorage.removeItem("driver_data");
+      // Redirect to login (assuming window.location is available)
+      window.location.href = "/login";
+    }
+    return Promise.reject(error);
+  }
+);
+
 // ==========================================
 // DRIVER APIs
 // ==========================================
