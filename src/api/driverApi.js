@@ -31,6 +31,15 @@ driverApi.interceptors.response.use(
 );
 
 export const driverService = {
+  saveLead: async (leadData) => {
+    try {
+      const response = await driverApi.post('/driver-leads/add', leadData);
+      return response.data;
+    } catch (e) {
+      console.error("Failed to save lead", e);
+      return { success: false };
+    }
+  },
   register: async (formData) => {
     const response = await driverApi.post('/drivers/register', formData, {
       headers: { 'Content-Type': 'multipart/form-data' }

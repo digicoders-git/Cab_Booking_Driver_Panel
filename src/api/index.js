@@ -42,3 +42,5 @@ export const driverLogin = async (email, password) => {
 
 // Add other APIs here as needed:
 // export const getDriverProfile = async () => { ... }
+
+export default api;

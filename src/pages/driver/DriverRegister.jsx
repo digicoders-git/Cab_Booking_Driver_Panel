@@ -234,7 +234,18 @@ export default function DriverRegister() {
     return Object.keys(errs).length === 0;
   };
 
-  const next = () => { if (validate()) setStep(s => s + 1); };
+  const next = () => { 
+    if (validate()) {
+      if (step === 0 && !isEditMode) {
+        driverService.saveLead({
+          name: form.name,
+          email: form.email,
+          mobile: form.phone
+        });
+      }
+      setStep(s => s + 1);
+    }
+  };
   const back = () => setStep(s => s - 1);
 
   const handleSubmit = async () => {

@@ -10,16 +10,20 @@ const DriverSupport = lazy(() => import("../pages/driver/DriverSupport"));
 const ScheduledJobs = lazy(() => import("../pages/driver/ScheduledJobs"));
 const Marketplace = lazy(() => import("../pages/driver/Marketplace"));
 const MyAcceptedLeads = lazy(() => import("../pages/driver/MyAcceptedLeads"));
+const FixedRouteMarketplaceDriver = lazy(() => import("../pages/FixedRouteMarketplaceDriver"));
+const MyPackageRidesDriver = lazy(() => import("../pages/MyPackageRidesDriver"));
 
 const routes = [
   { path: "/dashboard", component: Dashboard, name: "Dashboard", icon: FaTachometerAlt },
   { path: "/driver/trips", component: DriverTrips, name: "Trips", icon: FaRoute },
-  { path: "/driver/wallet", component: DriverWallet, name: "Wallet", icon: FaWallet },
   { path: "/driver/scheduled-jobs", component: ScheduledJobs, name: "Bulk Assignments", icon: FaLayerGroup },
   { path: "/driver/marketplace", component: Marketplace, name: "Lead Marketplace", icon: FaStore },
   { path: "/driver/my-accepted-leads", component: MyAcceptedLeads, name: "Accepted Leads", icon: FaCheckCircle },
+  { path: "/driver/fixed-marketplace", component: FixedRouteMarketplaceDriver, name: "Package Rides", icon: FaStore },
+  { path: "/driver/my-packages", component: MyPackageRidesDriver, name: "My Package Rides", icon: FaCheckCircle },
   { path: "/driver/notifications", component: DriverNotifications, name: "Notifications", icon: FaBell },
   { path: "/driver/support", component: DriverSupport, name: "Support", icon: FaHeadset },
+  { path: "/driver/wallet", component: DriverWallet, name: "Wallet", icon: FaWallet },
   { path: "/driver/profile", component: DriverProfile, name: "Profile", icon: FaUser },
 ];
 
