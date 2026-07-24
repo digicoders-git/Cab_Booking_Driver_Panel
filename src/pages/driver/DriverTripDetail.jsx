@@ -26,6 +26,8 @@ export default function DriverTripDetail() {
   const [liveLocation, setLiveLocation] = useState(null);
   const [activeStopIndex, setActiveStopIndex] = useState(null);
   const [isRateModalOpen, setIsRateModalOpen] = useState(false);
+  const [collectCashRequest, setCollectCashRequest] = useState(false);
+  const [finalFareToCollect, setFinalFareToCollect] = useState(0);
   const hasPromptedRating = useRef(false);
 
   useEffect(() => {
@@ -95,12 +97,24 @@ export default function DriverTripDetail() {
         }
       };
 
+      const handleCollectCash = (data) => {
+        const incomingId = data.bookingId || data.id;
+        const isTarget = (trip && trip._id === incomingId) ||
+          (incomingId && (incomingId === bookingId || incomingId.endsWith(shortId)));
+        if (isTarget) {
+            setCollectCashRequest(true);
+            setFinalFareToCollect(data.finalFare);
+        }
+      };
+
       socket.on('booking_update', handleUpdate);
       socket.on('stop_update', handleUpdate);
+      socket.on('collect_cash', handleCollectCash);
 
       return () => {
         socket.off('booking_update', handleUpdate);
         socket.off('stop_update', handleUpdate);
+        socket.off('collect_cash', handleCollectCash);
         console.log('⚰️ DriverTripDetail: socket listeners removed');
       };
     }
@@ -242,7 +256,7 @@ export default function DriverTripDetail() {
       (trip?.stops || []).reduce((sum, stop) => sum + (stop.waitingTimeMin || 0), 0);
 
     const result = await Swal.fire({
-      title: '🏁 End Trip?',
+      title: '🏁 Send Payment Request?',
       html: `
         <div class="text-left bg-gray-50 p-4 rounded-xl mb-4 border border-gray-200 shadow-inner">
           <div class="flex justify-between mb-2">
@@ -260,73 +274,51 @@ export default function DriverTripDetail() {
             <span class="font-black text-green-600 text-3xl">₹${currentFare}</span>
           </div>
         </div>
-        <p class="text-xs text-gray-400 mb-4">* Collect payment from passenger</p>
-        <div class="flex gap-4 justify-center">
-          <label class="flex-1 flex items-center gap-2 cursor-pointer p-3 border-2 border-gray-200 rounded-xl hover:border-blue-400 transition-all font-bold">
-            <input type="radio" name="payment" value="Cash" checked className="w-5 h-5" /> Cash
-          </label>
-          <label class="flex-1 flex items-center gap-2 cursor-pointer p-3 border-2 border-gray-200 rounded-xl hover:border-blue-400 transition-all font-bold">
-            <input type="radio" name="payment" value="Online" className="w-5 h-5" /> Online
-          </label>
-        </div>
+        <p class="text-xs text-gray-400 mb-4">* The customer will select Cash or Online on their device.</p>
       `,
       showCancelButton: true,
-      confirmButtonText: 'Confirm & End Trip ✅',
+      confirmButtonText: 'Send Request ✅',
       confirmButtonColor: '#10B981',
-      cancelButtonColor: '#94A3B8',
-      preConfirm: () => {
-        const selected = document.querySelector('input[name="payment"]:checked');
-        return selected?.value || 'Cash';
-      }
+      cancelButtonColor: '#94A3B8'
     });
 
     if (!result.isConfirmed) return;
 
-    const selectedMethod = result.value;
+    setActionLoading(true);
+    try {
+      const res = await driverService.initiateTripCompletion(bookingId);
+      if (res.success) {
+        toast.success("Payment request sent to customer!");
+        fetchTrip();
+      }
+    } catch (err) {
+      toast.error(err?.response?.data?.message || "Failed to initiate completion");
+    } finally {
+      setActionLoading(false);
+    }
+  };
 
-    if (selectedMethod === 'Online') {
-      setActionLoading(true);
-      try {
-        const orderRes = await driverService.initiateTripPayment(bookingId);
-        if (orderRes.success) {
-          // HDFC REDIRECT FLOW
-          const paymentUrl = orderRes.paymentLinks?.web || orderRes.paymentLinks;
-          if (paymentUrl) {
-            window.location.href = paymentUrl;
-          } else {
-            toast.error("Invalid payment link received from HDFC");
-            setActionLoading(false);
-          }
-        } else {
-          toast.error(orderRes.message || "Failed to initiate payment");
-          setActionLoading(false);
-        }
-      } catch (err) {
-        toast.error("Payment initiation error");
-        setActionLoading(false);
+  const handleConfirmCashCollection = async () => {
+    setActionLoading(true);
+    try {
+      const res = await driverService.confirmCashCollection(bookingId);
+      if (res.success) {
+        await Swal.fire({
+          icon: 'success',
+          title: '✅ Trip Completed!',
+          html: `<div class="p-4 bg-green-50 rounded-2xl border border-green-100 mb-2">
+                   <p class="text-gray-600">Final Fare Collected (Cash)</p>
+                   <p class="text-4xl font-black text-green-600 mt-1">₹${res.finalFare || trip?.actualFare}</p>
+                 </div>`,
+          confirmButtonColor: '#10B981',
+          confirmButtonText: 'Rate Passenger'
+        });
+        fetchTrip();
       }
-    } else {
-      setActionLoading(true);
-      try {
-        const res = await driverService.endTrip(bookingId, 'Cash');
-        if (res.success) {
-          await Swal.fire({
-            icon: 'success',
-            title: '✅ Trip Completed!',
-            html: `<div class="p-4 bg-green-50 rounded-2xl border border-green-100 mb-2">
-                     <p class="text-gray-600">Final Fare Collected (Cash)</p>
-                     <p class="text-4xl font-black text-green-600 mt-1">₹${res.finalFare || currentFare}</p>
-                   </div>`,
-            confirmButtonColor: '#10B981',
-            confirmButtonText: 'Rate Passenger'
-          });
-          fetchTrip();
-        }
-      } catch (err) {
-        toast.error("Failed to end trip");
-      } finally {
-        setActionLoading(false);
-      }
+    } catch (err) {
+      toast.error("Failed to confirm cash collection");
+    } finally {
+      setActionLoading(false);
     }
   };
 
@@ -409,7 +401,8 @@ export default function DriverTripDetail() {
   );
 
   const isAccepted = trip?.bookingStatus === 'Accepted';
-  const isOngoing = trip?.bookingStatus === 'Ongoing' || trip?.tripData?.startedAt;
+  const isPaymentPending = trip?.bookingStatus === 'Payment_Pending' || collectCashRequest;
+  const isOngoing = (trip?.bookingStatus === 'Ongoing' || trip?.tripData?.startedAt) && !isPaymentPending && !trip?.bookingStatus?.includes('Completed');
   const isCompleted = trip?.bookingStatus === 'Completed';
   const passenger = trip?.passengerDetails || {};
 
@@ -419,13 +412,14 @@ export default function DriverTripDetail() {
       <div className="px-4 pt-4">
         <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold ${
           isCompleted ? 'bg-green-100 text-green-700' :
+          isPaymentPending ? 'bg-purple-100 text-purple-700' :
           isOngoing ? 'bg-blue-100 text-blue-700' :
           'bg-yellow-100 text-yellow-700'
         }`}>
           <div className={`w-2 h-2 rounded-full animate-pulse ${
-            isCompleted ? 'bg-green-500' : isOngoing ? 'bg-blue-500' : 'bg-yellow-500'
+            isCompleted ? 'bg-green-500' : isPaymentPending ? 'bg-purple-500' : isOngoing ? 'bg-blue-500' : 'bg-yellow-500'
           }`} />
-          {isCompleted ? '✅ Completed' : isOngoing ? '🚗 Trip Ongoing' : '⏳ Accepted — Go to Pickup'}
+          {isCompleted ? '✅ Completed' : isPaymentPending ? '💸 Waiting for Payment' : isOngoing ? '🚗 Trip Ongoing' : '⏳ Accepted — Go to Pickup'}
         </div>
       </div>
 
@@ -739,6 +733,31 @@ export default function DriverTripDetail() {
             </div>
           );
         })()}
+
+        {/* Payment Pending / Cash Collection */}
+        {isPaymentPending && !isCompleted && (
+          <div className="space-y-3">
+            {collectCashRequest ? (
+               <div className="bg-green-50 border-2 border-green-500 rounded-2xl p-6 text-center shadow-lg animate-pulse">
+                  <h2 className="text-xl font-black text-green-800 uppercase tracking-wide">Collect Cash</h2>
+                  <p className="text-4xl font-black text-green-600 mt-2">₹{finalFareToCollect || trip?.actualFare || trip?.fareEstimate}</p>
+                  <button
+                    onClick={handleConfirmCashCollection}
+                    disabled={actionLoading}
+                    className="w-full mt-4 py-4 bg-green-600 text-white rounded-xl font-bold text-lg flex items-center justify-center gap-2 shadow-md hover:bg-green-700 transition-all"
+                  >
+                    {actionLoading ? <div className="animate-spin h-5 w-5 border-2 border-white border-t-transparent rounded-full" /> : <><FaCheckCircle size={20} /> Cash Received</>}
+                  </button>
+               </div>
+            ) : (
+               <div className="bg-purple-50 border border-purple-200 rounded-2xl p-6 text-center shadow-inner">
+                  <div className="animate-spin h-10 w-10 border-4 border-purple-600 border-t-transparent rounded-full mx-auto mb-3" />
+                  <h3 className="text-lg font-bold text-purple-800">Waiting for Customer...</h3>
+                  <p className="text-sm text-purple-600 mt-1">Passenger is selecting the payment method on their app.</p>
+               </div>
+            )}
+          </div>
+        )}
 
         {/* Completed */}
         {isCompleted && (

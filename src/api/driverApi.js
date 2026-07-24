@@ -199,5 +199,14 @@ export const driverService = {
   verifyTripPayment: async (paymentData) => {
     const response = await driverApi.post('/trips/execute/verify-payment', paymentData);
     return response.data;
+  },
+  // NEW: User-Side Payment Flow APIs
+  initiateTripCompletion: async (bookingId) => {
+    const response = await driverApi.post(`/trips/execute/${bookingId}/initiate-completion`);
+    return response.data;
+  },
+  confirmCashCollection: async (bookingId) => {
+    const response = await driverApi.post(`/trips/execute/${bookingId}/confirm-cash`);
+    return response.data;
   }
 };
