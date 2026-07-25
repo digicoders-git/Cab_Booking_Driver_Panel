@@ -69,7 +69,7 @@ export const driverService = {
     }
     const response = await driverApi.put('/drivers/update-location', {
       latitude, longitude, address: ''
-    }).catch(() => {});
+    }).catch(() => { });
     // toggleOnline sirf tab karo jab offline ho — frontend track karta hai
     return { success: true };
   },
@@ -77,7 +77,7 @@ export const driverService = {
   setOffline: async () => {
     return { success: true };
   },
-  
+
   updateLocation: async (latitude, longitude, address = '') => {
     console.log('📡 updateLocation called with:', { latitude, longitude, address });
     if (!latitude || !longitude) {
@@ -134,6 +134,10 @@ export const driverService = {
   },
   withdraw: async (amount, description = '') => {
     const response = await driverApi.post('/wallet/withdraw', { amount, description });
+    return response.data;
+  },
+  addMoney: async (amount) => {
+    const response = await driverApi.post('/wallet/add-money/create-order', { amount });
     return response.data;
   },
   getNotifications: async () => {
@@ -207,6 +211,15 @@ export const driverService = {
   },
   confirmCashCollection: async (bookingId) => {
     const response = await driverApi.post(`/trips/execute/${bookingId}/confirm-cash`);
+    return response.data;
+  },
+  // NEW: Destination Filter
+  setDestinationFilter: async (data) => {
+    const response = await driverApi.post('/drivers/set-destination', data);
+    return response.data;
+  },
+  clearDestinationFilter: async () => {
+    const response = await driverApi.post('/drivers/clear-destination');
     return response.data;
   }
 };

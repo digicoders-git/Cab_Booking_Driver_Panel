@@ -87,7 +87,21 @@ export default function DriverWallet() {
   const [withdrawing, setWithdrawing] = useState(false);
   const [selectedChart, setSelectedChart] = useState('all');
 
-  useEffect(() => { fetchWallet(); }, []);
+  useEffect(() => { 
+    fetchWallet(); 
+    
+    // Check for Razorpay redirect
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('success') === 'true') {
+      Swal.fire('Success', 'Wallet recharge successful!', 'success');
+      // Clean up URL
+      window.history.replaceState({}, document.title, window.location.pathname);
+    } else if (urlParams.get('error')) {
+      const errorMsg = urlParams.get('error').replace(/_/g, ' ');
+      Swal.fire('Error', 'Payment failed: ' + errorMsg, 'error');
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }, []);
 
   const fetchWallet = async () => {
     try {
@@ -135,6 +149,37 @@ export default function DriverWallet() {
         fetchWallet();
       }
     } catch (err) { toast.error('Withdrawal failed'); } finally { setWithdrawing(false); }
+  };
+
+  const handleAddMoney = async () => {
+    const { value: amount } = await Swal.fire({
+      title: 'Add Money to Wallet',
+      input: 'number',
+      inputLabel: 'Amount (₹)',
+      inputPlaceholder: 'Enter amount',
+      showCancelButton: true,
+      confirmButtonColor: '#3B82F6',
+      inputValidator: (value) => {
+        if (!value || value <= 0) {
+          return 'Please enter a valid amount!';
+        }
+      }
+    });
+
+    if (amount) {
+      try {
+        Swal.fire({ title: 'Initiating Payment...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); } });
+        const res = await driverService.addMoney(amount);
+        if (res.success && res.paymentLinks && res.paymentLinks.web) {
+          window.location.href = res.paymentLinks.web;
+        } else {
+          Swal.fire('Error', 'Failed to generate payment link', 'error');
+        }
+      } catch (err) {
+        console.error(err);
+        Swal.fire('Error', err?.response?.data?.message || 'Something went wrong', 'error');
+      }
+    }
   };
 
   const stats = useMemo(() => {
@@ -312,6 +357,12 @@ export default function DriverWallet() {
             </div>
           </div>
           <div className="flex items-center gap-2">
+            <button
+              onClick={handleAddMoney}
+              className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl hover:from-blue-700 hover:to-blue-800 transition-all shadow-md font-medium"
+            >
+              <FaMoneyBillWave /> Add Money
+            </button>
             <button
               onClick={fetchWallet}
               className="p-2.5 bg-white rounded-xl border border-gray-200 hover:border-blue-300 hover:text-blue-600 transition-all shadow-sm"

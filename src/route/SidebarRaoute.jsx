@@ -13,9 +13,12 @@ const MyAcceptedLeads = lazy(() => import("../pages/driver/MyAcceptedLeads"));
 const FixedRouteMarketplaceDriver = lazy(() => import("../pages/FixedRouteMarketplaceDriver"));
 const MyPackageRidesDriver = lazy(() => import("../pages/MyPackageRidesDriver"));
 
+const DestinationFilter = lazy(() => import("../pages/driver/DestinationFilter"));
+
 const routes = [
   { path: "/dashboard", component: Dashboard, name: "Dashboard", icon: FaTachometerAlt },
   { path: "/driver/trips", component: DriverTrips, name: "Trips", icon: FaRoute },
+  { path: "/driver/destination-filter", component: DestinationFilter, name: "Home-Bound Rides", icon: FaRoute }, // Re-using FaRoute or similar since FaMapMarkerAlt isn't imported from react-icons/fa
   { path: "/driver/scheduled-jobs", component: ScheduledJobs, name: "Bulk Assignments", icon: FaLayerGroup },
   { path: "/driver/marketplace", component: Marketplace, name: "Lead Marketplace", icon: FaStore },
   { path: "/driver/my-accepted-leads", component: MyAcceptedLeads, name: "Accepted Leads", icon: FaCheckCircle },
