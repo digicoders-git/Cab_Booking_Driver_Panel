@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api/index';
 import { toast } from 'sonner';
-import { FaCar, FaClock, FaUserAlt, FaCheckCircle, FaPhoneAlt, FaMoneyBillWave } from 'react-icons/fa';
+import { FaCar, FaClock, FaUserAlt, FaCheckCircle, FaPhoneAlt, FaMoneyBillWave, FaArrowRight, FaRedo, FaKey } from 'react-icons/fa';
 import Swal from 'sweetalert2';
 import { getSocket } from '../socket/socket';
 
@@ -9,6 +9,7 @@ const MyPackageRidesDriver = () => {
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('Accepted');
+  const [otpInput, setOtpInput] = useState({});
 
   useEffect(() => {
     fetchMyAcceptedBookings();
@@ -64,8 +65,39 @@ const MyPackageRidesDriver = () => {
     }
   };
 
+  const handleStartRide = async (bookingId) => {
+    const otp = otpInput[bookingId];
+    if (!otp || otp.length !== 4) {
+      return Swal.fire({
+        title: 'Enter OTP',
+        text: 'Please enter the 4-digit OTP provided by the customer to start the ride.',
+        icon: 'warning',
+        confirmButtonColor: '#4f46e5'
+      });
+    }
+    try {
+      await api.post(`/api/fixed-routes/bookings/${bookingId}/start-driver`, { otp });
+      Swal.fire({
+        title: 'Ride Started!',
+        text: 'The package ride has started. Timer begins now.',
+        icon: 'success',
+        confirmButtonColor: '#10b981'
+      });
+      setOtpInput(prev => ({ ...prev, [bookingId]: '' }));
+      fetchMyAcceptedBookings();
+    } catch (error) {
+      Swal.fire({
+        title: 'Error!',
+        text: error.response?.data?.message || 'Failed to start ride. Check OTP.',
+        icon: 'error',
+        confirmButtonColor: '#ef4444'
+      });
+    }
+  };
+
   const filteredBookings = bookings.filter(b => {
     if (activeTab === 'All') return true;
+    if (activeTab === 'Started') return b.status === 'Started';
     if (activeTab === 'Pending Payment') {
       return (b.paymentStatus === 'Pending' || b.paymentStatus === 'pending') && b.paymentMethod === 'Online';
     }
@@ -107,7 +139,7 @@ const MyPackageRidesDriver = () => {
         
         {/* Tabs */}
         <div className="flex flex-wrap bg-white p-1 rounded-xl border border-gray-200 shadow-sm gap-1">
-          {['All', 'Accepted', 'Completed', 'Pending Payment', 'Cancelled', 'Cash Collected'].map(tab => (
+          {['All', 'Accepted', 'Started', 'Completed', 'Pending Payment', 'Cancelled', 'Cash Collected'].map(tab => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -130,9 +162,17 @@ const MyPackageRidesDriver = () => {
                 <FaCar className="text-indigo-500 text-lg" />
                 <span className="truncate">{booking.carCategory?.name || 'Any Car'}</span>
               </div>
-              <span className={`px-3 py-1 rounded-full text-xs font-bold tracking-wide uppercase border ${booking.status === 'Completed' ? 'bg-emerald-50 text-emerald-600 border-emerald-200' : booking.status === 'Cancelled' ? 'bg-red-50 text-red-600 border-red-200' : 'bg-indigo-50 text-indigo-600 border-indigo-200'}`}>
-                {booking.status}
-              </span>
+              <div className="flex items-center gap-2">
+                {/* Trip Type */}
+                <span className={`px-2.5 py-1 rounded-full text-xs font-bold tracking-wide uppercase border flex items-center gap-1 ${
+                  booking.tripType === 'Round-Trip' ? 'bg-purple-50 text-purple-600 border-purple-200' : 'bg-blue-50 text-blue-600 border-blue-200'
+                }`}>
+                  {booking.tripType === 'Round-Trip' ? <><FaRedo size={9}/> Round</> : <><FaArrowRight size={9}/> One-Way</>}
+                </span>
+                <span className={`px-3 py-1 rounded-full text-xs font-bold tracking-wide uppercase border ${booking.status === 'Completed' ? 'bg-emerald-50 text-emerald-600 border-emerald-200' : booking.status === 'Cancelled' ? 'bg-red-50 text-red-600 border-red-200' : booking.status === 'Started' ? 'bg-green-50 text-green-600 border-green-200' : 'bg-indigo-50 text-indigo-600 border-indigo-200'}`}>
+                  {booking.status}
+                </span>
+              </div>
             </div>
 
             <div className="p-6 flex-grow bg-white">
@@ -183,12 +223,27 @@ const MyPackageRidesDriver = () => {
                 </div>
               </div>
 
-              <div className="mt-6 bg-gradient-to-br from-indigo-50/50 to-white rounded-xl p-4 border border-indigo-50 flex justify-between items-center flex-wrap gap-2">
+              <div className="mt-6 bg-gradient-to-br from-indigo-50/50 to-white rounded-xl p-4 border border-indigo-50">
+                {/* Time limit info */}
+                {booking.maxTimeHours > 0 && (
+                  <div className="flex items-center justify-between bg-orange-50 border border-orange-100 rounded-lg px-3 py-2 mb-3">
+                    <span className="text-orange-600 text-xs font-bold flex items-center gap-1.5">
+                      <FaClock size={10}/> Limit: {booking.maxTimeHours} hrs
+                    </span>
+                    <span className="text-orange-500 text-xs font-semibold">+₹{booking.extraTimeChargePerHour}/hr extra</span>
+                  </div>
+                )}
+                <div className="flex justify-between items-center flex-wrap gap-2">
                   <div className="flex flex-col">
                     <span className="text-[11px] text-indigo-900/60 font-bold uppercase tracking-wider">Your Earning</span>
                     <span className="text-2xl font-black text-emerald-600">
-                      ₹{booking.price - booking.adminCommission}
+                      ₹{(booking.finalPrice > 0 ? booking.finalPrice : booking.price) - booking.adminCommission}
                     </span>
+                    {booking.extraTimeCharges > 0 && (
+                      <span className="text-orange-500 text-[10px] font-semibold mt-0.5">
+                        Base ₹{booking.price - booking.adminCommission} + Extra ₹{booking.extraTimeCharges}
+                      </span>
+                    )}
                   </div>
                   {booking.paymentMethod === 'Online' ? (
                     <div className={`px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wide border ${booking.paymentStatus === 'Completed' ? 'bg-emerald-50 text-emerald-600 border-emerald-200' : 'bg-amber-50 text-amber-600 border-amber-200'} flex flex-col items-center justify-center`}>
@@ -199,19 +254,44 @@ const MyPackageRidesDriver = () => {
                       <span className="flex items-center gap-1.5"><FaMoneyBillWave /> Cash to Collect</span>
                     </div>
                   )}
+                </div>
               </div>
             </div>
 
+            {/* Start Ride Button - only for Accepted */}
             {booking.status === 'Accepted' && (
-                <div className="p-5 bg-gray-50 border-t border-gray-100 mt-auto">
-                <button 
-                    onClick={() => handleCompleteRide(booking._id)} 
-                    className="w-full flex justify-center items-center space-x-2 bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-3.5 px-4 rounded-xl transition-all duration-300 shadow-md hover:shadow-lg shadow-emerald-500/20 group/btn"
-                >
-                    <FaCheckCircle className="group-hover/btn:scale-110 transition-transform" />
-                    <span>Complete Ride</span>
-                </button>
+              <div className="p-5 bg-blue-50 border-t border-blue-100 mt-auto">
+                <p className="text-xs text-blue-600 font-bold mb-2 flex items-center gap-1.5"><FaKey /> Enter Customer OTP to Start Ride</p>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    maxLength={4}
+                    placeholder="4-digit OTP"
+                    value={otpInput[booking._id] || ''}
+                    onChange={(e) => setOtpInput(prev => ({ ...prev, [booking._id]: e.target.value }))}
+                    className="flex-1 border border-blue-200 rounded-xl px-3 py-2.5 text-center text-lg font-black tracking-widest focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white"
+                  />
+                  <button
+                    onClick={() => handleStartRide(booking._id)}
+                    className="flex-1 flex justify-center items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 px-4 rounded-xl transition-all shadow-md shadow-blue-600/20"
+                  >
+                    <FaArrowRight /> Start Ride
+                  </button>
                 </div>
+              </div>
+            )}
+
+            {/* Complete Ride Button - only for Started */}
+            {booking.status === 'Started' && (
+              <div className="p-5 bg-gray-50 border-t border-gray-100 mt-auto">
+                <button
+                  onClick={() => handleCompleteRide(booking._id)}
+                  className="w-full flex justify-center items-center space-x-2 bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-3.5 px-4 rounded-xl transition-all duration-300 shadow-md hover:shadow-lg shadow-emerald-500/20 group/btn"
+                >
+                  <FaCheckCircle className="group-hover/btn:scale-110 transition-transform" />
+                  <span>Complete Ride</span>
+                </button>
+              </div>
             )}
           </div>
         ))}

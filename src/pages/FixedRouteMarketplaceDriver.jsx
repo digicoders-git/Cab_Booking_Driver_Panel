@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import api from '../api/index';
 import { toast } from 'sonner';
 import Swal from 'sweetalert2';
-import { FaCar, FaClock, FaCheckCircle, FaUserAlt } from 'react-icons/fa';
+import { FaCar, FaClock, FaCheckCircle, FaUserAlt, FaArrowRight, FaRedo } from 'react-icons/fa';
 import { io } from 'socket.io-client';
 import { API_BASE_URL } from '../api/config';
 
@@ -116,9 +116,19 @@ const FixedRouteMarketplaceDriver = () => {
                 <FaCar className="text-indigo-500 text-lg" />
                 <span className="truncate">{booking.carCategory?.name || 'Any Car'}</span>
               </div>
-              <span className={`px-3 py-1 rounded-full text-xs font-bold tracking-wide uppercase border ${booking.paymentMethod === 'Cash' ? 'bg-orange-50 text-orange-600 border-orange-200' : 'bg-green-50 text-green-600 border-green-200'}`}>
-                {booking.paymentMethod}
-              </span>
+              <div className="flex items-center gap-2">
+                {/* Trip Type Badge */}
+                <span className={`px-2.5 py-1 rounded-full text-xs font-bold tracking-wide uppercase border flex items-center gap-1 ${
+                  booking.tripType === 'Round-Trip'
+                    ? 'bg-purple-50 text-purple-600 border-purple-200'
+                    : 'bg-blue-50 text-blue-600 border-blue-200'
+                }`}>
+                  {booking.tripType === 'Round-Trip' ? <><FaRedo size={9}/> Round</> : <><FaArrowRight size={9}/> One-Way</>}
+                </span>
+                <span className={`px-3 py-1 rounded-full text-xs font-bold tracking-wide uppercase border ${booking.paymentMethod === 'Cash' ? 'bg-orange-50 text-orange-600 border-orange-200' : 'bg-green-50 text-green-600 border-green-200'}`}>
+                  {booking.paymentMethod}
+                </span>
+              </div>
             </div>
 
             {/* Card Body - Route Details */}
@@ -183,6 +193,15 @@ const FixedRouteMarketplaceDriver = () => {
                     <p className="text-rose-500 font-bold text-sm">- ₹{booking.adminCommission}</p>
                   </div>
                 </div>
+                {/* Time Limit Info */}
+                {booking.maxTimeHours > 0 && (
+                  <div className="flex items-center justify-between bg-orange-50 border border-orange-100 rounded-lg px-3 py-2 mb-3">
+                    <span className="text-orange-600 text-xs font-bold flex items-center gap-1.5">
+                      <FaClock size={10}/> Includes {booking.maxTimeHours} hrs
+                    </span>
+                    <span className="text-orange-500 text-xs font-semibold">+₹{booking.extraTimeChargePerHour}/hr extra</span>
+                  </div>
+                )}
                 <div className="flex justify-between items-center">
                   <span className="text-[11px] text-indigo-900/60 font-bold uppercase tracking-wider">Your Final Earning</span>
                   <span className="text-2xl font-black text-emerald-600">
