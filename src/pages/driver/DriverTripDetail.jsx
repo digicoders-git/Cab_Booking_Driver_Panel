@@ -286,7 +286,9 @@ export default function DriverTripDetail() {
 
     setActionLoading(true);
     try {
-      const res = await driverService.initiateTripCompletion(bookingId);
+      // Pass estimatedDistanceKm as actualDistanceKm fallback since real-time GPS tracking isn't in web panel
+      const distanceToPass = trip?.actualDistanceKm || trip?.estimatedDistanceKm || 0;
+      const res = await driverService.initiateTripCompletion(bookingId, { actualDistanceKm: distanceToPass });
       if (res.success) {
         toast.success("Payment request sent to customer!");
         fetchTrip();

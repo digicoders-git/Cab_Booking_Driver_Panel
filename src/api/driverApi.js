@@ -205,8 +205,8 @@ export const driverService = {
     return response.data;
   },
   // NEW: User-Side Payment Flow APIs
-  initiateTripCompletion: async (bookingId) => {
-    const response = await driverApi.post(`/trips/execute/${bookingId}/initiate-completion`);
+  initiateTripCompletion: async (bookingId, data = {}) => {
+    const response = await driverApi.post(`/trips/execute/${bookingId}/initiate-completion`, data);
     return response.data;
   },
   confirmCashCollection: async (bookingId) => {
