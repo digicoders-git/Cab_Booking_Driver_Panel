@@ -63,6 +63,9 @@ export default function DriverTripDetail() {
   }, [shortId]);
 
   useEffect(() => {
+    // Reset state when navigating to a new trip
+    setCollectCashRequest(false);
+    setFinalFareToCollect(0);
     fetchTrip();
 
     // 🎯 Real-time Booking Update Listener (Cancellation, Stops etc.)

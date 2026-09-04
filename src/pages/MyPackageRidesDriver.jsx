@@ -237,7 +237,7 @@ const MyPackageRidesDriver = () => {
                   <div className="flex flex-col">
                     <span className="text-[11px] text-indigo-900/60 font-bold uppercase tracking-wider">Your Earning</span>
                     <span className="text-2xl font-black text-emerald-600">
-                      ₹{(booking.finalPrice > 0 ? booking.finalPrice : booking.price) - booking.adminCommission}
+                      ₹{booking.price + (booking.extraTimeCharges || 0) + (booking.extraDistanceCharges || 0) - (booking.adminCommission || 0)}
                     </span>
                     {booking.extraTimeCharges > 0 && (
                       <span className="text-orange-500 text-[10px] font-semibold mt-0.5">
@@ -251,7 +251,7 @@ const MyPackageRidesDriver = () => {
                     </div>
                   ) : (
                     <div className="px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wide border bg-orange-50 text-orange-600 border-orange-200 flex flex-col items-center justify-center">
-                      <span className="flex items-center gap-1.5"><FaMoneyBillWave /> Cash to Collect</span>
+                      <span className="flex items-center gap-1.5"><FaMoneyBillWave /> Cash to Collect: ₹{booking.finalPrice > 0 ? booking.finalPrice : booking.price}</span>
                     </div>
                   )}
                 </div>
