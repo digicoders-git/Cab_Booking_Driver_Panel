@@ -73,10 +73,20 @@ export default function ScheduledJobs() {
         }
     };
 
-    const handleEndTrip = async (bookingId) => {
+    const handleEndTrip = async (job) => {
+        const remainingBalance = (job.totalPriceWithTax || job.offeredPrice) - (job.advancePayment?.amount || 0);
+
         const result = await Swal.fire({
             title: 'End Trip?',
-            text: "Kya aapne trip poori kar li hai?",
+            html: `
+                <div class="text-center">
+                    <p class="mb-4 text-gray-600 font-medium">Kya aapne trip poori kar li hai?</p>
+                    <div class="p-3 bg-blue-50 rounded-xl border border-blue-100 mx-auto max-w-xs text-left">
+                        <p class="text-[10px] text-blue-600 font-bold uppercase tracking-wider mb-1">Total to Collect (If Final Driver)</p>
+                        <p class="text-3xl font-black text-blue-800">&#8377;${remainingBalance}</p>
+                    </div>
+                </div>
+            `,
             icon: 'question',
             showCancelButton: true,
             confirmButtonText: 'Yes, End Trip',
@@ -84,6 +94,7 @@ export default function ScheduledJobs() {
         });
 
         if (!result.isConfirmed) return;
+        const bookingId = job._id;
 
         try {
             setLoading(true);
@@ -335,9 +346,8 @@ export default function ScheduledJobs() {
                                                 </span>
                                             )}
                                         </div>
-                                        <div className="flex items-center gap-2 text-green-600 font-bold">
-                                            <DollarSign size={16} />
-                                            <span className="text-lg">₹{job.offeredPrice?.toLocaleString()}</span>
+                                        <div className="flex items-center gap-1 text-green-600 font-bold">
+                                            <span className="text-lg">&#8377;{(job.totalPriceWithTax || job.offeredPrice)?.toLocaleString()}</span>
                                         </div>
                                     </div>
 
@@ -401,7 +411,7 @@ export default function ScheduledJobs() {
                                     {job.myStatus === 'Ongoing' && (
                                         <button 
                                             className="w-full py-3 bg-green-600 text-white rounded-xl text-xs font-bold shadow-lg shadow-green-200 hover:scale-[1.02] active:scale-95 transition-all"
-                                            onClick={() => handleEndTrip(job._id)}
+                                            onClick={() => handleEndTrip(job)}
                                         >
                                             End Trip
                                         </button>

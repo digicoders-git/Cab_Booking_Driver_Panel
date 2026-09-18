@@ -183,6 +183,14 @@ export const driverService = {
     const response = await driverApi.get('/bulk-bookings/driver/my-assignments');
     return response.data;
   },
+  getBulkMarketplace: async () => {
+    const response = await driverApi.get('/bulk-bookings/marketplace');
+    return response.data;
+  },
+  acceptBulkDeal: async (bookingId) => {
+    const response = await driverApi.post(`/bulk-bookings/accept/${bookingId}`);
+    return response.data;
+  },
   startBulkAssignment: async (bookingId, otp) => {
     const response = await driverApi.post(`/bulk-bookings/driver/start/${bookingId}`, { otp });
     return response.data;

@@ -12,7 +12,7 @@ import {
 } from 'react-icons/fa';
 import {
   User, Phone, Mail, MapPin, Navigation, Award,
-  Shield, Car, Palette, Tag, Star, Calendar
+  Shield, Car, Palette, Tag, Star, Calendar, Share2, Copy
 } from 'lucide-react';
 
 export default function DriverProfile() {
@@ -377,6 +377,54 @@ export default function DriverProfile() {
                         disabled
                         className="w-full px-4 py-2.5 border border-gray-200 rounded-xl bg-gray-50 text-gray-500 cursor-not-allowed"
                       />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1.5 flex items-center gap-1">
+                        <FaIdCard size={12} /> My Referral Code
+                      </label>
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          value={profile?.referralCode || 'Not Generated'}
+                          disabled
+                          className="w-full px-4 py-2.5 border border-gray-200 rounded-xl bg-gray-50 text-blue-600 font-bold cursor-not-allowed text-center"
+                        />
+                        {profile?.referralCode && (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                navigator.clipboard.writeText(profile.referralCode);
+                                toast.success('Referral code copied!');
+                              }}
+                              className="px-4 py-2.5 bg-gray-100 text-gray-600 rounded-xl hover:bg-gray-200 flex items-center justify-center transition-colors shadow-sm"
+                              title="Copy Code"
+                            >
+                              <Copy size={18} />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const shareData = {
+                                  title: 'Join KwikCab as a Driver!',
+                                  text: `Hey! I'm driving with KwikCab. Join me and use my referral code: ${profile.referralCode} to get a joining bonus!`,
+                                  url: window.location.origin
+                                };
+                                if (navigator.share) {
+                                  navigator.share(shareData).catch(console.error);
+                                } else {
+                                  navigator.clipboard.writeText(`${shareData.text} ${shareData.url}`);
+                                  toast.success('Referral message copied to clipboard!');
+                                }
+                              }}
+                              className="px-4 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl hover:opacity-90 flex items-center justify-center transition-opacity shadow-sm"
+                              title="Share Referral Code"
+                            >
+                              <Share2 size={18} />
+                            </button>
+                          </>
+                        )}
+                      </div>
                     </div>
                     <div>
                       <label className="block text-xs font-medium text-gray-600 mb-1.5 flex items-center gap-1">

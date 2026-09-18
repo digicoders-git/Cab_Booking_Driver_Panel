@@ -94,7 +94,8 @@ export default function DriverRegister() {
     image: null, rcImage: null, insuranceImage: null, pucImage: null, permitImage: null,
     aadharFile: null, panFile: null, // New file fields
     addressLatitude: prefill?.addressLatitude || null,
-    addressLongitude: prefill?.addressLongitude || null
+    addressLongitude: prefill?.addressLongitude || null,
+    referredByCode: ''
   };
 
   const [form, setForm] = useState(initialForm);
@@ -194,8 +195,10 @@ export default function DriverRegister() {
       }
     }
     if (step === 1) {
-      if (!form.licenseNumber.trim()) errs.licenseNumber = 'License number required';
-      if (!form.licenseExpiry) errs.licenseExpiry = 'License expiry required';
+      if (form.vehicleType !== 'E-Rickshaw') {
+        if (!form.licenseNumber.trim()) errs.licenseNumber = 'License number required';
+        if (!form.licenseExpiry) errs.licenseExpiry = 'License expiry required';
+      }
       if (!form.aadhar.trim()) errs.aadhar = 'Aadhar required';
       if (!form.pan.trim()) errs.pan = 'PAN required';
       if (!form.address.trim()) errs.address = 'Address required';
@@ -224,8 +227,10 @@ export default function DriverRegister() {
         if (!form.rcImage) errs.rcImage = 'RC document required';
         if (!form.insuranceImage) errs.insuranceImage = 'Insurance document required';
         if (!form.insuranceExpiry) errs.insuranceExpiry = 'Insurance expiry required';
-        if (!form.permitImage) errs.permitImage = 'Permit document required';
-        if (!form.permitExpiry) errs.permitExpiry = 'Permit expiry required';
+        if (form.vehicleType !== 'Bike' && form.vehicleType !== 'E-Rickshaw') {
+          if (!form.permitImage) errs.permitImage = 'Permit document required';
+          if (!form.permitExpiry) errs.permitExpiry = 'Permit expiry required';
+        }
         if (!form.pucImage) errs.pucImage = 'PUC document required';
         if (!form.pucExpiry) errs.pucExpiry = 'PUC expiry required';
       }
@@ -336,15 +341,44 @@ export default function DriverRegister() {
                   <InputField label="Confirm Password" name="confirmPassword" icon={FaLock} type="password" value={form.confirmPassword} onChange={handleChange} error={errors.confirmPassword} />
                 </>
               )}
+              <InputField label="Referral Code (Optional)" name="referredByCode" icon={FaIdCard} value={form.referredByCode} onChange={handleChange} readOnly={isEditMode} placeholder="Enter invite code" />
             </div>
           )}
 
           {step === 1 && (
             <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <InputField label="License Number" name="licenseNumber" icon={FaIdCard} value={form.licenseNumber} onChange={handleChange} error={errors.licenseNumber} />
-                <InputField label="License Expiry" name="licenseExpiry" type="date" value={form.licenseExpiry} onChange={handleChange} error={errors.licenseExpiry} />
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">Vehicle Type</label>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <label className={`flex flex-col items-center justify-center gap-2 p-3 border rounded-xl cursor-pointer transition-all ${form.vehicleType === 'Car' ? 'border-blue-600 bg-blue-50 text-blue-700' : 'border-gray-200 hover:bg-gray-50'}`}>
+                    <input type="radio" name="vehicleType" value="Car" checked={form.vehicleType === 'Car'} onChange={handleChange} className="hidden" />
+                    <FaCar size={24} />
+                    <span className="font-medium text-sm">Car</span>
+                  </label>
+                  <label className={`flex flex-col items-center justify-center gap-2 p-3 border rounded-xl cursor-pointer transition-all ${form.vehicleType === 'Auto' ? 'border-blue-600 bg-blue-50 text-blue-700' : 'border-gray-200 hover:bg-gray-50'}`}>
+                    <input type="radio" name="vehicleType" value="Auto" checked={form.vehicleType === 'Auto'} onChange={handleChange} className="hidden" />
+                    <span className="text-2xl">🛺</span>
+                    <span className="font-medium text-sm">Auto</span>
+                  </label>
+                  <label className={`flex flex-col items-center justify-center gap-2 p-3 border rounded-xl cursor-pointer transition-all ${form.vehicleType === 'Bike' ? 'border-blue-600 bg-blue-50 text-blue-700' : 'border-gray-200 hover:bg-gray-50'}`}>
+                    <input type="radio" name="vehicleType" value="Bike" checked={form.vehicleType === 'Bike'} onChange={handleChange} className="hidden" />
+                    <span className="text-2xl">🏍️</span>
+                    <span className="font-medium text-sm">Bike</span>
+                  </label>
+                  <label className={`flex flex-col items-center justify-center gap-2 p-3 border rounded-xl cursor-pointer transition-all ${form.vehicleType === 'E-Rickshaw' ? 'border-blue-600 bg-blue-50 text-blue-700' : 'border-gray-200 hover:bg-gray-50'}`}>
+                    <input type="radio" name="vehicleType" value="E-Rickshaw" checked={form.vehicleType === 'E-Rickshaw'} onChange={handleChange} className="hidden" />
+                    <span className="text-2xl">⚡</span>
+                    <span className="font-medium text-sm">E-Rickshaw</span>
+                  </label>
+                </div>
               </div>
+
+              {form.vehicleType !== 'E-Rickshaw' && (
+                <div className="grid grid-cols-2 gap-4">
+                  <InputField label="License Number" name="licenseNumber" icon={FaIdCard} value={form.licenseNumber} onChange={handleChange} error={errors.licenseNumber} />
+                  <InputField label="License Expiry" name="licenseExpiry" type="date" value={form.licenseExpiry} onChange={handleChange} error={errors.licenseExpiry} />
+                </div>
+              )}
               <div className="grid grid-cols-2 gap-4">
                 <InputField label="Aadhar Number" name="aadhar" icon={FaShieldAlt} value={form.aadhar} onChange={handleChange} error={errors.aadhar} maxLength={12} />
                 <InputField label="PAN Number" name="pan" icon={FaIdCard} value={form.pan} onChange={handleChange} error={errors.pan} maxLength={10} />
@@ -380,21 +414,6 @@ export default function DriverRegister() {
 
           {step === 3 && (
             <div className="space-y-4">
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-2">Vehicle Type</label>
-                <div className="flex gap-4">
-                  <label className={`flex-1 flex items-center justify-center gap-2 p-3 border rounded-xl cursor-pointer transition-all ${form.vehicleType === 'Car' ? 'border-blue-600 bg-blue-50 text-blue-700' : 'border-gray-200 hover:bg-gray-50'}`}>
-                    <input type="radio" name="vehicleType" value="Car" checked={form.vehicleType === 'Car'} onChange={handleChange} className="hidden" />
-                    <FaCar size={18} />
-                    <span className="font-medium">Car</span>
-                  </label>
-                  <label className={`flex-1 flex items-center justify-center gap-2 p-3 border rounded-xl cursor-pointer transition-all ${form.vehicleType === 'Bike' ? 'border-blue-600 bg-blue-50 text-blue-700' : 'border-gray-200 hover:bg-gray-50'}`}>
-                    <input type="radio" name="vehicleType" value="Bike" checked={form.vehicleType === 'Bike'} onChange={handleChange} className="hidden" />
-                    <span className="text-xl">🏍️</span>
-                    <span className="font-medium">Bike</span>
-                  </label>
-                </div>
-              </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <InputField label="Vehicle Number" name="carNumber" icon={FaCar} value={form.carNumber} onChange={handleChange} error={errors.carNumber} />
@@ -426,10 +445,12 @@ export default function DriverRegister() {
                 <FileUpload label="Insurance Doc" name="insuranceImage" value={form.insuranceImage} onChange={handleChange} error={errors.insuranceImage} />
                 <InputField label="Expiry" name="insuranceExpiry" type="date" value={form.insuranceExpiry} onChange={handleChange} error={errors.insuranceExpiry} />
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <FileUpload label="Permit Doc" name="permitImage" value={form.permitImage} onChange={handleChange} error={errors.permitImage} />
-                <InputField label="Expiry" name="permitExpiry" type="date" value={form.permitExpiry} onChange={handleChange} error={errors.permitExpiry} />
-              </div>
+              {form.vehicleType !== 'Bike' && form.vehicleType !== 'E-Rickshaw' && (
+                <div className="grid grid-cols-2 gap-4">
+                  <FileUpload label="Permit Doc" name="permitImage" value={form.permitImage} onChange={handleChange} error={errors.permitImage} />
+                  <InputField label="Expiry" name="permitExpiry" type="date" value={form.permitExpiry} onChange={handleChange} error={errors.permitExpiry} />
+                </div>
+              )}
               <div className="grid grid-cols-2 gap-4">
                 <FileUpload label="PUC Doc" name="pucImage" value={form.pucImage} onChange={handleChange} error={errors.pucImage} />
                 <InputField label="Expiry" name="pucExpiry" type="date" value={form.pucExpiry} onChange={handleChange} error={errors.pucExpiry} />
