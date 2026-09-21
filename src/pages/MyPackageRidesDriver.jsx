@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api/index';
 import { toast } from 'sonner';
-import { FaCar, FaClock, FaUserAlt, FaCheckCircle, FaPhoneAlt, FaMoneyBillWave, FaArrowRight, FaRedo, FaKey } from 'react-icons/fa';
+import { FaCar, FaClock, FaUserAlt, FaCheckCircle, FaPhoneAlt, FaMoneyBillWave, FaArrowRight, FaRedo, FaKey, FaUserTie } from 'react-icons/fa';
 import Swal from 'sweetalert2';
 import { getSocket } from '../socket/socket';
 
@@ -152,149 +152,241 @@ const MyPackageRidesDriver = () => {
       </div>
       
       <div className="grid grid-cols-1 xl:grid-cols-2 2xl:grid-cols-3 gap-8">
-        {filteredBookings.map(booking => (
-          <div key={booking._id} className="bg-white rounded-2xl p-0 shadow-sm border border-gray-200 hover:border-indigo-400 hover:shadow-xl transition-all duration-300 group flex flex-col overflow-hidden relative">
-            
-            <div className={`absolute top-0 left-0 w-full h-1.5 ${booking.status === 'Completed' ? 'bg-emerald-500' : booking.status === 'Cancelled' ? 'bg-red-500' : 'bg-indigo-500'}`}></div>
+        {filteredBookings.map(booking => {
+          const isAgentBooking = booking.bookedByModel === 'Agent' || !!booking.agent;
+          const customerName = booking.customerName || booking.user?.name || 'Customer';
+          const customerPhone = booking.customerPhone || booking.user?.phone || '';
+          const driverEarning = (booking.price || 0) + (booking.extraTimeCharges || 0) + (booking.extraDistanceCharges || 0) - (booking.adminCommission || 0);
+          const collectAmount = booking.finalPrice > 0 ? booking.finalPrice : (booking.totalWithTax || booking.price || 0);
 
-            <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gradient-to-r from-gray-50 to-white mt-1">
-              <div className="flex items-center space-x-2 text-gray-700 font-semibold">
-                <FaCar className="text-indigo-500 text-lg" />
-                <span className="truncate">{booking.carCategory?.name || 'Any Car'}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                {/* Trip Type */}
-                <span className={`px-2.5 py-1 rounded-full text-xs font-bold tracking-wide uppercase border flex items-center gap-1 ${
-                  booking.tripType === 'Round-Trip' ? 'bg-purple-50 text-purple-600 border-purple-200' : 'bg-blue-50 text-blue-600 border-blue-200'
-                }`}>
-                  {booking.tripType === 'Round-Trip' ? <><FaRedo size={9}/> Round</> : <><FaArrowRight size={9}/> One-Way</>}
-                </span>
-                <span className={`px-3 py-1 rounded-full text-xs font-bold tracking-wide uppercase border ${booking.status === 'Completed' ? 'bg-emerald-50 text-emerald-600 border-emerald-200' : booking.status === 'Cancelled' ? 'bg-red-50 text-red-600 border-red-200' : booking.status === 'Started' ? 'bg-green-50 text-green-600 border-green-200' : 'bg-indigo-50 text-indigo-600 border-indigo-200'}`}>
-                  {booking.status}
-                </span>
-              </div>
-            </div>
+          return (
+            <div key={booking._id} className="bg-white rounded-2xl shadow-sm border border-gray-200 hover:border-indigo-300 hover:shadow-xl transition-all duration-300 flex flex-col overflow-hidden relative group">
+              
+              {/* Top Accent Line */}
+              <div className={`absolute top-0 left-0 w-full h-1.5 ${
+                booking.status === 'Completed' ? 'bg-emerald-500' :
+                booking.status === 'Cancelled' ? 'bg-rose-500' :
+                booking.status === 'Started' ? 'bg-emerald-500 animate-pulse' : 'bg-blue-600'
+              }`}></div>
 
-            <div className="p-6 flex-grow bg-white">
-              <div className="relative pl-6 space-y-6 mb-8">
-                <div className="absolute left-[0.4rem] top-2 bottom-2 w-0.5 bg-gray-200 rounded-full"></div>
-                
-                <div className="relative">
-                  <div className="absolute -left-[1.65rem] top-1.5 w-3.5 h-3.5 bg-emerald-500 rounded-full border-[3px] border-white z-10 shadow-sm"></div>
-                  <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-1">Pickup Location</p>
-                  <p className="text-gray-800 text-sm font-semibold line-clamp-2 leading-relaxed" title={booking.pickupLocation}>
-                    {booking.pickupLocation}
-                  </p>
-                </div>
-
-                <div className="relative">
-                  <div className="absolute -left-[1.65rem] top-1.5 w-3.5 h-3.5 bg-rose-500 rounded-full border-[3px] border-white z-10 shadow-sm"></div>
-                  <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-1">Drop Location</p>
-                  <p className="text-gray-800 text-sm font-semibold line-clamp-2 leading-relaxed" title={booking.dropLocation}>
-                    {booking.dropLocation}
-                  </p>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="bg-gray-50 rounded-xl p-3 border border-gray-100">
-                  <div className="flex items-center text-[10px] text-gray-500 font-bold uppercase tracking-wider mb-1.5">
-                    <FaClock className="mr-1.5 text-indigo-400" /> Date & Time
+              {/* Card Header */}
+              <div className="px-5 py-4 border-b border-gray-100 flex items-start justify-between gap-3 bg-slate-50/50 mt-1">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0 border border-blue-100">
+                    <FaCar size={18} />
                   </div>
-                  <p className="text-gray-800 font-bold text-sm">
-                    {new Date(booking.pickupDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                    <span className="mx-1 text-gray-300">|</span>
-                    <span className="text-indigo-600">{booking.pickupTime}</span>
-                  </p>
-                </div>
-
-                <div className="bg-gray-50 rounded-xl p-3 border border-gray-100">
-                  <div className="flex items-center text-[10px] text-gray-500 font-bold uppercase tracking-wider mb-1.5">
-                    <FaUserAlt className="mr-1.5 text-indigo-400" /> Customer
-                  </div>
-                  <div className="flex flex-col">
-                    <p className="text-gray-800 font-bold text-sm truncate">
-                        {booking.user?.name || 'Guest User'}
-                    </p>
-                    <p className="text-gray-500 text-xs flex items-center mt-1">
-                        <FaPhoneAlt className="mr-1 text-[9px]"/> {booking.user?.phone || 'N/A'}
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="mt-6 bg-gradient-to-br from-indigo-50/50 to-white rounded-xl p-4 border border-indigo-50">
-                {/* Time limit info */}
-                {booking.maxTimeHours > 0 && (
-                  <div className="flex items-center justify-between bg-orange-50 border border-orange-100 rounded-lg px-3 py-2 mb-3">
-                    <span className="text-orange-600 text-xs font-bold flex items-center gap-1.5">
-                      <FaClock size={10}/> Limit: {booking.maxTimeHours} hrs
+                  <div>
+                    <h3 className="font-black text-gray-900 text-base leading-tight">
+                      {booking.carCategory?.name || 'Package Ride'}
+                    </h3>
+                    <span className="text-[11px] font-mono text-gray-400 font-bold">
+                      #{booking._id.slice(-8).toUpperCase()}
                     </span>
-                    <span className="text-orange-500 text-xs font-semibold">+₹{booking.extraTimeChargePerHour}/hr extra</span>
                   </div>
-                )}
-                <div className="flex justify-between items-center flex-wrap gap-2">
-                  <div className="flex flex-col">
-                    <span className="text-[11px] text-indigo-900/60 font-bold uppercase tracking-wider">Your Earning</span>
-                    <span className="text-2xl font-black text-emerald-600">
-                      ₹{booking.price + (booking.extraTimeCharges || 0) + (booking.extraDistanceCharges || 0) - (booking.adminCommission || 0)}
-                    </span>
-                    {booking.extraTimeCharges > 0 && (
-                      <span className="text-orange-500 text-[10px] font-semibold mt-0.5">
-                        Base ₹{booking.price - booking.adminCommission} + Extra ₹{booking.extraTimeCharges}
+                </div>
+
+                <div className="flex flex-col items-end gap-1.5">
+                  <div className="flex items-center gap-1.5">
+                    {isAgentBooking && (
+                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-purple-50 text-purple-700 border border-purple-200 flex items-center gap-1 shadow-sm">
+                        <FaUserTie size={10} /> Agent Ride
                       </span>
                     )}
+                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border flex items-center gap-1 ${
+                      booking.tripType === 'Round-Trip' ? 'bg-purple-50 text-purple-600 border-purple-200' : 'bg-blue-50 text-blue-600 border-blue-200'
+                    }`}>
+                      {booking.tripType === 'Round-Trip' ? <><FaRedo size={8}/> Round</> : <><FaArrowRight size={8}/> One-Way</>}
+                    </span>
                   </div>
-                  {booking.paymentMethod === 'Online' ? (
-                    <div className={`px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wide border ${booking.paymentStatus === 'Completed' ? 'bg-emerald-50 text-emerald-600 border-emerald-200' : 'bg-amber-50 text-amber-600 border-amber-200'} flex flex-col items-center justify-center`}>
-                      <span className="flex items-center gap-1.5"><FaMoneyBillWave /> {booking.paymentStatus === 'Completed' ? 'Paid Online' : 'Payment Pending (Online)'}</span>
+                  <span className={`px-2.5 py-0.5 rounded-full text-xs font-black uppercase tracking-wider border flex items-center gap-1.5 ${
+                    booking.status === 'Completed' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+                    booking.status === 'Cancelled' ? 'bg-rose-50 text-rose-700 border-rose-200' :
+                    booking.status === 'Started' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+                    'bg-blue-50 text-blue-700 border-blue-200'
+                  }`}>
+                    <span className={`w-1.5 h-1.5 rounded-full ${
+                      booking.status === 'Started' || booking.status === 'Accepted' ? 'bg-blue-600 animate-pulse' :
+                      booking.status === 'Completed' ? 'bg-emerald-600' : 'bg-rose-500'
+                    }`} />
+                    {booking.status}
+                  </span>
+                </div>
+              </div>
+
+              {/* Card Body */}
+              <div className="p-5 flex-grow flex flex-col justify-between space-y-4">
+                {/* Route Timeline */}
+                <div className="relative pl-6 space-y-3">
+                  <div className="absolute left-[0.45rem] top-2 bottom-2 w-0.5 bg-gradient-to-b from-emerald-400 via-gray-200 to-rose-400"></div>
+
+                  <div className="relative">
+                    <div className="absolute -left-6 top-1 w-3.5 h-3.5 rounded-full bg-emerald-500 ring-4 ring-emerald-100"></div>
+                    <p className="text-[10px] text-emerald-700 font-bold uppercase tracking-wider">Pickup Location</p>
+                    <p className="text-gray-900 text-xs font-bold line-clamp-2 leading-snug mt-0.5" title={booking.pickupLocation}>
+                      {booking.pickupLocation}
+                    </p>
+                  </div>
+
+                  <div className="relative">
+                    <div className="absolute -left-6 top-1 w-3.5 h-3.5 rounded-full bg-rose-500 ring-4 ring-rose-100"></div>
+                    <p className="text-[10px] text-rose-700 font-bold uppercase tracking-wider">Drop Location</p>
+                    <p className="text-gray-900 text-xs font-bold line-clamp-2 leading-snug mt-0.5" title={booking.dropLocation}>
+                      {booking.dropLocation}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Schedule & Limits */}
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="bg-slate-50 rounded-xl p-2.5 border border-slate-100">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1">
+                      <FaClock className="text-blue-500" /> Pickup Schedule
+                    </p>
+                    <p className="text-xs font-black text-slate-800 mt-1">
+                      {new Date(booking.pickupDate).toLocaleDateString('en-IN', { month: 'short', day: 'numeric' })} • <span className="text-blue-600">{booking.pickupTime}</span>
+                    </p>
+                  </div>
+
+                  <div className="bg-slate-50 rounded-xl p-2.5 border border-slate-100">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1">
+                      <FaRedo className="text-purple-500" /> Package Limit
+                    </p>
+                    <p className="text-xs font-black text-slate-800 mt-1 truncate">
+                      {booking.maxTimeHours > 0 ? `${booking.maxTimeHours} Hrs (+₹${booking.extraTimeChargePerHour}/hr)` : 'Standard Route'}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Contact Cards Section */}
+                <div className="space-y-2">
+                  {/* Passenger Card */}
+                  <div className="bg-emerald-50/40 border border-emerald-100 rounded-xl p-2.5 flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <div className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0 font-bold">
+                        <FaUserAlt size={12} />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-700">Passenger</p>
+                        <p className="text-xs font-black text-gray-900 truncate">
+                          {customerName}
+                        </p>
+                      </div>
                     </div>
-                  ) : (
-                    <div className="px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wide border bg-orange-50 text-orange-600 border-orange-200 flex flex-col items-center justify-center">
-                      <span className="flex items-center gap-1.5"><FaMoneyBillWave /> Cash to Collect: ₹{booking.finalPrice > 0 ? booking.finalPrice : booking.price}</span>
+                    {customerPhone ? (
+                      <a
+                        href={`tel:${customerPhone}`}
+                        className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-sm transition active:scale-95 shrink-0"
+                        title="Call Customer"
+                      >
+                        <FaPhoneAlt size={10} /> {customerPhone}
+                      </a>
+                    ) : (
+                      <span className="text-xs text-gray-400 font-semibold">No Phone</span>
+                    )}
+                  </div>
+
+                  {/* Agent Card (If Booked by Agent) */}
+                  {isAgentBooking && (
+                    <div className="bg-purple-50/50 border border-purple-100 rounded-xl p-2.5 flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <div className="w-8 h-8 rounded-lg bg-purple-100 text-purple-700 flex items-center justify-center shrink-0 font-bold">
+                          <FaUserTie size={13} />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-[10px] font-bold uppercase tracking-wider text-purple-700">Booked By Agent</p>
+                          <p className="text-xs font-black text-gray-900 truncate">
+                            {booking.agent?.name || 'Authorized Agent'}
+                          </p>
+                        </div>
+                      </div>
+                      {booking.agent?.phone ? (
+                        <a
+                          href={`tel:${booking.agent.phone}`}
+                          className="px-3 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-sm transition active:scale-95 shrink-0"
+                          title="Call Agent"
+                        >
+                          <FaPhoneAlt size={10} /> {booking.agent.phone}
+                        </a>
+                      ) : (
+                        <span className="text-xs text-gray-400 font-semibold">No Phone</span>
+                      )}
                     </div>
                   )}
                 </div>
-              </div>
-            </div>
 
-            {/* Start Ride Button - only for Accepted */}
-            {booking.status === 'Accepted' && (
-              <div className="p-5 bg-blue-50 border-t border-blue-100 mt-auto">
-                <p className="text-xs text-blue-600 font-bold mb-2 flex items-center gap-1.5"><FaKey /> Enter Customer OTP to Start Ride</p>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    maxLength={4}
-                    placeholder="4-digit OTP"
-                    value={otpInput[booking._id] || ''}
-                    onChange={(e) => setOtpInput(prev => ({ ...prev, [booking._id]: e.target.value }))}
-                    className="flex-1 border border-blue-200 rounded-xl px-3 py-2.5 text-center text-lg font-black tracking-widest focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white"
-                  />
-                  <button
-                    onClick={() => handleStartRide(booking._id)}
-                    className="flex-1 flex justify-center items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 px-4 rounded-xl transition-all shadow-md shadow-blue-600/20"
-                  >
-                    <FaArrowRight /> Start Ride
-                  </button>
+                {/* Earnings & Payment Summary Bar */}
+                <div className="rounded-xl p-3 bg-gradient-to-r from-slate-50 via-slate-50 to-indigo-50/30 border border-slate-200/80 flex items-center justify-between gap-3">
+                  <div>
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Driver Payout</span>
+                    <p className="text-2xl font-black text-emerald-600 leading-tight">
+                      ₹{driverEarning}
+                    </p>
+                    <p className="text-[10px] text-slate-400 font-medium">
+                      Fare: ₹{booking.price} • Comm: -₹{booking.adminCommission}
+                    </p>
+                  </div>
+
+                  <div className="text-right shrink-0">
+                    {booking.paymentMethod === 'Cash' ? (
+                      <div className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-sm">
+                        <FaMoneyBillWave size={12} /> Cash: ₹{collectAmount}
+                      </div>
+                    ) : (
+                      <div className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 border ${
+                        booking.paymentStatus === 'Completed'
+                          ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                          : 'bg-amber-50 text-amber-700 border-amber-200'
+                      }`}>
+                        <FaMoneyBillWave size={12} /> {booking.paymentStatus === 'Completed' ? 'Paid Online' : 'Online (Pending)'}
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
-            )}
 
-            {/* Complete Ride Button - only for Started */}
-            {booking.status === 'Started' && (
-              <div className="p-5 bg-gray-50 border-t border-gray-100 mt-auto">
-                <button
-                  onClick={() => handleCompleteRide(booking._id)}
-                  className="w-full flex justify-center items-center space-x-2 bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-3.5 px-4 rounded-xl transition-all duration-300 shadow-md hover:shadow-lg shadow-emerald-500/20 group/btn"
-                >
-                  <FaCheckCircle className="group-hover/btn:scale-110 transition-transform" />
-                  <span>Complete Ride</span>
-                </button>
-              </div>
-            )}
-          </div>
-        ))}
+              {/* Start Ride Button - only for Accepted */}
+              {booking.status === 'Accepted' && (
+                <div className="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border-t border-blue-100 mt-auto">
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-xs text-blue-900 font-bold flex items-center gap-1.5">
+                      <FaKey className="text-blue-600" /> Enter Start OTP:
+                    </p>
+                    <span className="text-[11px] text-blue-600 font-semibold">Ask passenger for OTP</span>
+                  </div>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      maxLength={4}
+                      placeholder="••••"
+                      value={otpInput[booking._id] || ''}
+                      onChange={(e) => setOtpInput(prev => ({ ...prev, [booking._id]: e.target.value }))}
+                      className="w-32 border border-blue-200 rounded-xl px-2 py-2 text-center text-lg font-mono font-black tracking-[0.4em] focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white shadow-inner"
+                    />
+                    <button
+                      onClick={() => handleStartRide(booking._id)}
+                      className="flex-1 flex justify-center items-center gap-1.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold py-2 px-3 rounded-xl transition-all shadow-md shadow-blue-500/25 active:scale-95 text-xs"
+                    >
+                      <FaArrowRight /> Start Ride
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Complete Ride Button - only for Started */}
+              {booking.status === 'Started' && (
+                <div className="p-4 bg-emerald-50 border-t border-emerald-100 mt-auto">
+                  <button
+                    onClick={() => handleCompleteRide(booking._id)}
+                    className="w-full flex justify-center items-center space-x-2 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-bold py-3 px-4 rounded-xl transition-all duration-300 shadow-md shadow-emerald-500/20 active:scale-95 text-sm"
+                  >
+                    <FaCheckCircle className="transition-transform" />
+                    <span>Complete Ride</span>
+                  </button>
+                </div>
+              )}
+            </div>
+          );
+        })}
 
         {filteredBookings.length === 0 && (
           <div className="col-span-full py-20 flex flex-col items-center justify-center text-center bg-white rounded-2xl border border-gray-200 shadow-sm">

@@ -91,7 +91,7 @@ const Login = () => {
         <div className="text-center mb-4">
           <div className="w-full h-40 mx-auto mb-2 flex items-center justify-center p-1">
             <img
-              src="/logo.png"
+              src="/logo2.png"
               alt="Cab booking Logo"
               className="w-full h-full object-contain"
             />

@@ -266,8 +266,8 @@ export default function DriverDashboard() {
         const registration = await navigator.serviceWorker.ready;
         registration.showNotification(title, {
           body: body,
-          icon: '/logo.png',
-          badge: '/logo.png',
+          icon: '/logo2.png',
+          badge: '/logo2.png',
           tag: payload.data?.bookingId || 'new-ride',
           renotify: true,
           vibrate: [200, 100, 200],
@@ -276,12 +276,12 @@ export default function DriverDashboard() {
             {
               action: 'accept',
               title: '🚕 ACCEPT RIDE',
-              icon: '/logo.png'
+              icon: '/logo2.png'
             },
             {
               action: 'reject',
               title: '❌ IGNORE',
-              icon: '/logo.png'
+              icon: '/logo2.png'
             }
           ] : [] 
         });

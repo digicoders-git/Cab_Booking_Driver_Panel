@@ -306,7 +306,7 @@ export default function DriverRegister() {
         <div className={`bg-gradient-to-r ${isEditMode ? 'from-indigo-600 to-blue-600' : 'from-blue-600 to-purple-600'} p-6 text-white`}>
           <div className="flex items-center gap-3 mb-4">
             <div className="w-16 h-16 bg-white rounded-xl flex items-center justify-center p-1 flex-shrink-0">
-              <img src="/logo.png" alt="Logo" className="w-full h-full object-contain" />
+              <img src="/logo2.png" alt="Logo" className="w-full h-full object-contain" />
             </div>
             <div>
               <h1 className="text-xl font-bold">{isEditMode ? 'Edit & Resubmit' : 'Driver Registration'}</h1>

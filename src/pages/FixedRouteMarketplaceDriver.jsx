@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import api from '../api/index';
 import { toast } from 'sonner';
 import Swal from 'sweetalert2';
-import { FaCar, FaClock, FaCheckCircle, FaUserAlt, FaArrowRight, FaRedo } from 'react-icons/fa';
+import { FaCar, FaClock, FaCheckCircle, FaUserAlt, FaArrowRight, FaRedo, FaUserTie, FaPhoneAlt } from 'react-icons/fa';
 import { io } from 'socket.io-client';
 import { API_BASE_URL } from '../api/config';
 
@@ -107,79 +107,124 @@ const FixedRouteMarketplaceDriver = () => {
       </div>
       
       <div className="grid grid-cols-1 xl:grid-cols-2 2xl:grid-cols-3 gap-8">
-        {bookings.map(booking => (
-          <div key={booking._id} className="bg-white rounded-2xl p-0 shadow-sm border border-gray-200 hover:border-indigo-400 hover:shadow-xl transition-all duration-300 group flex flex-col overflow-hidden">
-            
-            {/* Card Header */}
-            <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gradient-to-r from-gray-50 to-white">
-              <div className="flex items-center space-x-2 text-gray-700 font-semibold">
-                <FaCar className="text-indigo-500 text-lg" />
-                <span className="truncate">{booking.carCategory?.name || 'Any Car'}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                {/* Trip Type Badge */}
-                <span className={`px-2.5 py-1 rounded-full text-xs font-bold tracking-wide uppercase border flex items-center gap-1 ${
-                  booking.tripType === 'Round-Trip'
-                    ? 'bg-purple-50 text-purple-600 border-purple-200'
-                    : 'bg-blue-50 text-blue-600 border-blue-200'
-                }`}>
-                  {booking.tripType === 'Round-Trip' ? <><FaRedo size={9}/> Round</> : <><FaArrowRight size={9}/> One-Way</>}
-                </span>
-                <span className={`px-3 py-1 rounded-full text-xs font-bold tracking-wide uppercase border ${booking.paymentMethod === 'Cash' ? 'bg-orange-50 text-orange-600 border-orange-200' : 'bg-green-50 text-green-600 border-green-200'}`}>
-                  {booking.paymentMethod}
-                </span>
-              </div>
-            </div>
+        {bookings.map(booking => {
+          const isAgentBooking = booking.bookedByModel === 'Agent' || !!booking.agent;
+          const customerName = booking.customerName || booking.user?.name || 'Customer';
+          const customerPhone = booking.customerPhone || booking.user?.phone || '';
 
-            {/* Card Body - Route Details */}
-            <div className="p-6 flex-grow bg-white">
-              <div className="relative pl-6 space-y-6 mb-8">
-                {/* Vertical Line indicator */}
-                <div className="absolute left-[0.4rem] top-2 bottom-2 w-0.5 bg-gray-200 rounded-full"></div>
-                
-                {/* Pickup */}
-                <div className="relative">
-                  <div className="absolute -left-[1.65rem] top-1.5 w-3.5 h-3.5 bg-emerald-500 rounded-full border-[3px] border-white z-10 shadow-sm"></div>
-                  <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-1">Pickup Location</p>
-                  <p className="text-gray-800 text-sm font-semibold line-clamp-2 leading-relaxed" title={booking.pickupLocation}>
-                    {booking.pickupLocation}
-                  </p>
+          return (
+            <div key={booking._id} className="bg-white rounded-2xl p-0 shadow-sm border border-gray-200 hover:border-indigo-400 hover:shadow-xl transition-all duration-300 group flex flex-col overflow-hidden">
+              
+              {/* Card Header */}
+              <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gradient-to-r from-gray-50 to-white">
+                <div className="flex items-center space-x-2 text-gray-700 font-semibold">
+                  <FaCar className="text-indigo-500 text-lg" />
+                  <span className="truncate">{booking.carCategory?.name || 'Any Car'}</span>
                 </div>
-
-                {/* Drop */}
-                <div className="relative">
-                  <div className="absolute -left-[1.65rem] top-1.5 w-3.5 h-3.5 bg-rose-500 rounded-full border-[3px] border-white z-10 shadow-sm"></div>
-                  <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-1">Drop Location</p>
-                  <p className="text-gray-800 text-sm font-semibold line-clamp-2 leading-relaxed" title={booking.dropLocation}>
-                    {booking.dropLocation}
-                  </p>
+                <div className="flex items-center gap-2 flex-wrap justify-end">
+                  {/* Agent Booking Badge */}
+                  {isAgentBooking && (
+                    <span className="px-2.5 py-1 rounded-full text-xs font-bold tracking-wide uppercase border bg-purple-50 text-purple-700 border-purple-200 flex items-center gap-1 shadow-sm">
+                      <FaUserTie size={10} /> Agent Ride
+                    </span>
+                  )}
+                  {/* Trip Type Badge */}
+                  <span className={`px-2.5 py-1 rounded-full text-xs font-bold tracking-wide uppercase border flex items-center gap-1 ${
+                    booking.tripType === 'Round-Trip'
+                      ? 'bg-purple-50 text-purple-600 border-purple-200'
+                      : 'bg-blue-50 text-blue-600 border-blue-200'
+                  }`}>
+                    {booking.tripType === 'Round-Trip' ? <><FaRedo size={9}/> Round</> : <><FaArrowRight size={9}/> One-Way</>}
+                  </span>
+                  <span className={`px-3 py-1 rounded-full text-xs font-bold tracking-wide uppercase border ${booking.paymentMethod === 'Cash' ? 'bg-orange-50 text-orange-600 border-orange-200' : 'bg-green-50 text-green-600 border-green-200'}`}>
+                    {booking.paymentMethod}
+                  </span>
                 </div>
               </div>
 
-              {/* Info Grid */}
-              <div className="grid grid-cols-2 gap-4">
-                {/* Date & Time */}
-                <div className="bg-gray-50 rounded-xl p-3 border border-gray-100">
-                  <div className="flex items-center text-[10px] text-gray-500 font-bold uppercase tracking-wider mb-1.5">
-                    <FaClock className="mr-1.5 text-indigo-400" /> Date & Time
+              {/* Card Body - Route Details */}
+              <div className="p-6 flex-grow bg-white">
+                <div className="relative pl-6 space-y-6 mb-8">
+                  {/* Vertical Line indicator */}
+                  <div className="absolute left-[0.4rem] top-2 bottom-2 w-0.5 bg-gray-200 rounded-full"></div>
+                  
+                  {/* Pickup */}
+                  <div className="relative">
+                    <div className="absolute -left-[1.65rem] top-1.5 w-3.5 h-3.5 bg-emerald-500 rounded-full border-[3px] border-white z-10 shadow-sm"></div>
+                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-1">Pickup Location</p>
+                    <p className="text-gray-800 text-sm font-semibold line-clamp-2 leading-relaxed" title={booking.pickupLocation}>
+                      {booking.pickupLocation}
+                    </p>
                   </div>
-                  <p className="text-gray-800 font-bold text-sm">
-                    {new Date(booking.pickupDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                    <span className="mx-1 text-gray-300">|</span>
-                    <span className="text-indigo-600">{booking.pickupTime}</span>
-                  </p>
+
+                  {/* Drop */}
+                  <div className="relative">
+                    <div className="absolute -left-[1.65rem] top-1.5 w-3.5 h-3.5 bg-rose-500 rounded-full border-[3px] border-white z-10 shadow-sm"></div>
+                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-1">Drop Location</p>
+                    <p className="text-gray-800 text-sm font-semibold line-clamp-2 leading-relaxed" title={booking.dropLocation}>
+                      {booking.dropLocation}
+                    </p>
+                  </div>
                 </div>
 
-                {/* Customer Info */}
-                <div className="bg-gray-50 rounded-xl p-3 border border-gray-100">
-                  <div className="flex items-center text-[10px] text-gray-500 font-bold uppercase tracking-wider mb-1.5">
-                    <FaUserAlt className="mr-1.5 text-indigo-400" /> Customer
+                {/* Info Grid */}
+                <div className="grid grid-cols-2 gap-4">
+                  {/* Date & Time */}
+                  <div className="bg-gray-50 rounded-xl p-3 border border-gray-100">
+                    <div className="flex items-center text-[10px] text-gray-500 font-bold uppercase tracking-wider mb-1.5">
+                      <FaClock className="mr-1.5 text-indigo-400" /> Date & Time
+                    </div>
+                    <p className="text-gray-800 font-bold text-sm">
+                      {new Date(booking.pickupDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                      <span className="mx-1 text-gray-300">|</span>
+                      <span className="text-indigo-600">{booking.pickupTime}</span>
+                    </p>
                   </div>
-                  <p className="text-gray-800 font-bold text-sm truncate">
-                    {booking.user?.name || 'Guest User'}
-                  </p>
+
+                  {/* Customer Info */}
+                  <div className="bg-gray-50 rounded-xl p-3 border border-gray-100">
+                    <div className="flex items-center justify-between text-[10px] text-gray-500 font-bold uppercase tracking-wider mb-1.5">
+                      <span className="flex items-center">
+                        <FaUserAlt className="mr-1.5 text-indigo-400" /> Customer
+                      </span>
+                      {isAgentBooking && (
+                        <span className="text-[9px] text-purple-600 font-extrabold uppercase">
+                          Passenger
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-gray-800 font-bold text-sm truncate">
+                      {customerName}
+                    </p>
+                    {customerPhone && (
+                      <p className="text-gray-500 text-xs flex items-center mt-1">
+                        <FaPhoneAlt className="mr-1 text-[9px]"/> {customerPhone}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Agent Details if booked by agent */}
+                  {isAgentBooking && (
+                    <div className="col-span-2 bg-purple-50/70 rounded-xl p-3 border border-purple-100 flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-lg bg-purple-100 text-purple-700 flex items-center justify-center font-bold shrink-0">
+                          <FaUserTie size={12} />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-[10px] text-purple-600 font-bold uppercase tracking-wider">Booked By Agent</p>
+                          <p className="text-gray-900 font-bold text-xs truncate">
+                            {booking.agent?.name || 'Authorized Agent'}
+                          </p>
+                        </div>
+                      </div>
+                      {booking.agent?.phone && (
+                        <span className="text-purple-700 font-bold text-xs flex items-center gap-1 bg-white px-2 py-1 rounded-md border border-purple-200">
+                          <FaPhoneAlt size={9} /> {booking.agent.phone}
+                        </span>
+                      )}
+                    </div>
+                  )}
                 </div>
-              </div>
 
               {/* Earnings Breakdown */}
               <div className="mt-6 bg-gradient-to-br from-indigo-50/50 to-white rounded-xl p-4 border border-indigo-50">
@@ -222,7 +267,8 @@ const FixedRouteMarketplaceDriver = () => {
               </button>
             </div>
           </div>
-        ))}
+        );
+      })}
 
         {bookings.length === 0 && (
           <div className="col-span-full py-20 flex flex-col items-center justify-center text-center bg-white rounded-2xl border border-gray-200 shadow-sm">
