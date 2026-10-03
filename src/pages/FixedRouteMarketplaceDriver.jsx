@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import api from '../api/index';
 import { toast } from 'sonner';
 import Swal from 'sweetalert2';
-import { FaCar, FaClock, FaCheckCircle, FaUserAlt, FaArrowRight, FaRedo, FaUserTie, FaPhoneAlt } from 'react-icons/fa';
+import { FaCar, FaClock, FaCheckCircle, FaUserAlt, FaArrowRight, FaRedo, FaUserTie, FaPhoneAlt, FaInfoCircle } from 'react-icons/fa';
 import { io } from 'socket.io-client';
 import { API_BASE_URL } from '../api/config';
 
@@ -53,7 +53,7 @@ const FixedRouteMarketplaceDriver = () => {
   const handleAcceptBooking = async (bookingId) => {
     const result = await Swal.fire({
       title: 'Accept Package?',
-      text: 'Are you sure you want to accept this package ride? If cash, commission will be deducted from your wallet.',
+      html: '<p class="text-sm text-gray-600 mb-2">Are you sure you want to accept this package ride? If cash, commission will be deducted from your wallet.</p><p class="text-xs text-amber-800 font-bold bg-amber-50 p-2.5 rounded-lg border border-amber-200 text-left">⚠️ Note: Fare ke alawa toll alag se customer se collect karna hai. Kisi bhi offer / package ride mein toll include nahi hai.</p>',
       icon: 'question',
       showCancelButton: true,
       confirmButtonColor: '#4f46e5',
@@ -253,6 +253,14 @@ const FixedRouteMarketplaceDriver = () => {
                     ₹{booking.price - booking.adminCommission}
                   </span>
                 </div>
+              </div>
+
+              {/* Toll Notice Banner */}
+              <div className="mt-3 bg-amber-50 border border-amber-200/80 rounded-xl p-3 flex items-start gap-2.5 text-left">
+                <FaInfoCircle className="text-amber-500 text-sm mt-0.5 shrink-0" />
+                <p className="text-xs text-amber-900 font-medium leading-relaxed">
+                  <strong className="text-amber-950 font-bold">Note:</strong> Fare ke alawa toll alag se customer se collect karna hai. Kisi bhi offer / package ride mein toll include nahi hai.
+                </p>
               </div>
             </div>
 

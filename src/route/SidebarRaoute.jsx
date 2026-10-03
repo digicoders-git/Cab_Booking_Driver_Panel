@@ -1,5 +1,5 @@
 import { lazy } from "react";
-import { FaTachometerAlt, FaUser, FaRoute, FaWallet, FaBell, FaHeadset, FaLayerGroup, FaStore, FaCheckCircle } from "react-icons/fa";
+import { FaTachometerAlt, FaUser, FaRoute, FaWallet, FaBell, FaHeadset, FaLayerGroup, FaStore, FaCheckCircle, FaCar } from "react-icons/fa";
 
 const Dashboard = lazy(() => import("../pages/driver/DriverDashboard"));
 const DriverProfile = lazy(() => import("../pages/driver/DriverProfile"));
@@ -13,12 +13,14 @@ const Marketplace = lazy(() => import("../pages/driver/Marketplace"));
 const MyAcceptedLeads = lazy(() => import("../pages/driver/MyAcceptedLeads"));
 const FixedRouteMarketplaceDriver = lazy(() => import("../pages/FixedRouteMarketplaceDriver"));
 const MyPackageRidesDriver = lazy(() => import("../pages/MyPackageRidesDriver"));
+const DriverRentalTrips = lazy(() => import("../pages/driver/DriverRentalTrips"));
 
 const DestinationFilter = lazy(() => import("../pages/driver/DestinationFilter"));
 
 const routes = [
   { path: "/dashboard", component: Dashboard, name: "Dashboard", icon: FaTachometerAlt },
   { path: "/driver/trips", component: DriverTrips, name: "Trips", icon: FaRoute },
+  { path: "/driver/rentals", component: DriverRentalTrips, name: "Rental Trips", icon: FaCar },
   { path: "/driver/destination-filter", component: DestinationFilter, name: "Home-Bound Rides", icon: FaRoute },
   { path: "/driver/bulk-marketplace", component: BulkMarketplaceDriver, name: "Bulk Deals", icon: FaStore },
   { path: "/driver/scheduled-jobs", component: ScheduledJobs, name: "Accepted Bulk Deals", icon: FaCheckCircle },

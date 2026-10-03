@@ -88,8 +88,13 @@ const RideRequestModal = ({
           {/* Fare & Stats Block */}
           <div className="bg-white px-6 py-5 border-b border-gray-100 flex justify-between items-center shadow-sm relative z-10">
              <div>
-                <p className="text-[10px] text-gray-400 font-black uppercase tracking-widest mb-1">Est. Fare</p>
+                <p className="text-[10px] text-gray-400 font-black uppercase tracking-widest mb-1">Total Fare Value</p>
                 <p className="text-4xl font-black text-emerald-500 tracking-tighter drop-shadow-sm">₹{rideData.fare || 0}</p>
+                {rideData.subsidyAmount > 0 && (
+                  <span className="text-[10px] text-blue-600 font-bold bg-blue-50 px-1.5 py-0.5 rounded border border-blue-100 mt-1 inline-block">
+                    Collect: ₹{rideData.netFare || (rideData.fare - rideData.subsidyAmount)} • Subsidy: ₹{rideData.subsidyAmount}
+                  </span>
+                )}
              </div>
              <div className="text-right">
                 <p className="text-[10px] text-gray-400 font-black uppercase tracking-widest mb-2">Passenger</p>

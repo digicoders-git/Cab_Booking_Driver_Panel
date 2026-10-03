@@ -11,6 +11,7 @@ import { connectSocket, disconnectSocket, forceOnline, forceOffline, emitLocatio
 import { driverService } from "../api/driverApi";
 import { toast } from "sonner";
 import RideRequestModal from "./RideRequestModal";
+import RentalRequestModal from "./RentalRequestModal";
 import { requestForToken, onMessageListener } from "../firebase";
 
 const DashboardLayout = () => {
@@ -18,6 +19,8 @@ const DashboardLayout = () => {
   const [isDriverOnline, setIsDriverOnline] = useState(false); // Online/Offline state
   const [rideRequest, setRideRequest] = useState(null);
   const [showRideModal, setShowRideModal] = useState(false);
+  const [rentalRequest, setRentalRequest] = useState(null);
+  const [showRentalModal, setShowRentalModal] = useState(false);
   const { admin, logout } = useAuth();
   const { themeColors, toggleTheme, palette, changePalette } = useTheme();
   const { currentFont, corporateFonts, changeFont } = useFont();
@@ -246,10 +249,28 @@ const DashboardLayout = () => {
       toast.success(`🚀 New Agent Lead! Earn ₹${data.earning}. Check Marketplace!`, { duration: 8000 });
     };
 
+    const onNewRentalRequest = (data) => {
+      console.log('🚗 [GLOBAL] new_rental_request received:', data);
+      setRentalRequest(data);
+      setShowRentalModal(true);
+      toast.info(`🚕 New Rental Booking Request!`, { duration: 5000 });
+    };
+
+    const onRentalRequestAccepted = (data) => {
+      console.log('⏰ [GLOBAL] rental_request_accepted received:', data);
+      setShowRentalModal(false);
+      setRentalRequest(null);
+      if (data.driverId !== driverId) {
+        toast.error('Rental ride accepted by another driver', { duration: 4000 });
+      }
+    };
+
     socket.on('new_ride_request', onNewRequest);
     socket.on('ride_request_timeout', onRideTimeout);
     socket.on('ride_request_cancelled', onRideCancelled);
     socket.on('new_agent_lead', onNewAgentLead);
+    socket.on('new_rental_request', onNewRentalRequest);
+    socket.on('rental_request_accepted', onRentalRequestAccepted);
 
     return () => {
       // ✅ Specific removal, NOT global socket.off()
@@ -258,6 +279,8 @@ const DashboardLayout = () => {
       socket.off('ride_request_timeout', onRideTimeout);
       socket.off('ride_request_cancelled', onRideCancelled);
       socket.off('new_agent_lead', onNewAgentLead);
+      socket.off('new_rental_request', onNewRentalRequest);
+      socket.off('rental_request_accepted', onRentalRequestAccepted);
       console.log('🔌 Cleaned up Layout listeners specifically');
     };
   }, [admin?._id]);
@@ -378,6 +401,32 @@ const DashboardLayout = () => {
           themeColors={themeColors}
         />
 
+        {/* Rental Request Modal */}
+        <RentalRequestModal
+          isOpen={showRentalModal}
+          onClose={() => {
+            setShowRentalModal(false);
+            setRentalRequest(null);
+          }}
+          rentalData={rentalRequest}
+          onAccept={async () => {
+            try {
+              const res = await driverService.acceptRentalBooking(rentalRequest.bookingId);
+              if (res.success) {
+                toast.success('🚕 Rental Ride accepted!');
+                setShowRentalModal(false);
+                navigate('/driver/rentals');
+              }
+            } catch (err) {
+              toast.error(err?.response?.data?.message || 'Failed to accept rental ride');
+            }
+          }}
+          onReject={() => {
+            toast.info('❌ Rental Ride Rejected');
+            setShowRentalModal(false);
+            setRentalRequest(null);
+          }}
+        />
 
       </div>
     </div>

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api/index';
 import { toast } from 'sonner';
-import { FaCar, FaClock, FaUserAlt, FaCheckCircle, FaPhoneAlt, FaMoneyBillWave, FaArrowRight, FaRedo, FaKey, FaUserTie } from 'react-icons/fa';
+import { FaCar, FaClock, FaUserAlt, FaCheckCircle, FaPhoneAlt, FaMoneyBillWave, FaArrowRight, FaRedo, FaKey, FaUserTie, FaInfoCircle } from 'react-icons/fa';
 import Swal from 'sweetalert2';
 import { getSocket } from '../socket/socket';
 
@@ -341,6 +341,14 @@ const MyPackageRidesDriver = () => {
                       </div>
                     )}
                   </div>
+                </div>
+
+                {/* Toll Notice */}
+                <div className="mt-3 bg-amber-50 border border-amber-200/80 rounded-xl p-2.5 flex items-start gap-2 text-left">
+                  <FaInfoCircle className="text-amber-500 text-xs mt-0.5 shrink-0" />
+                  <p className="text-[11px] text-amber-800 font-medium leading-snug">
+                    <span className="font-bold text-amber-900">Note:</span> Toll charges fare mein include nahi hain. Toll passenger se alag se collect karein.
+                  </p>
                 </div>
               </div>
 

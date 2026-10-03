@@ -231,7 +231,6 @@ export default function DriverDashboard() {
         console.log('📦 Cancelled Data:', data);
         
         fetchDashboardData();
-        console.log('========================================\n');
       });
     };
     attachSocketListeners();
@@ -272,7 +271,7 @@ export default function DriverDashboard() {
           renotify: true,
           vibrate: [200, 100, 200],
           data: payload.data,
-          actions: payload.data?.type === "NEW_RIDE_REQUEST" ? [
+          actions: (payload.data?.type === "NEW_RIDE_REQUEST" || payload.data?.type === "NEW_RENTAL_REQUEST") ? [
             {
               action: 'accept',
               title: '🚕 ACCEPT RIDE',
@@ -374,6 +373,23 @@ export default function DriverDashboard() {
       console.error('========================================\n');
       toast.error(err?.response?.data?.message || 'Failed to reject ride');
     }
+  };
+
+  const handleAcceptRental = async (bookingId) => {
+    try {
+      const res = await driverService.acceptRentalBooking(bookingId);
+      if (res.success) {
+        toast.success('Rental Booking Accepted!');
+        setPendingRentals(prev => prev.filter(req => req.bookingId !== bookingId));
+        fetchDashboardData(); // Refresh trips list
+      }
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Failed to accept rental booking');
+    }
+  };
+
+  const handleRejectRental = (bookingId) => {
+    setPendingRentals(prev => prev.filter(req => req.bookingId !== bookingId));
   };
 
   const handleStartTrip = async (bookingId) => {
@@ -625,7 +641,14 @@ export default function DriverDashboard() {
                       </div>
                       <div className="flex items-center gap-3">
                         <div className="text-right">
-                          <p className="text-lg font-bold text-green-600">₹{booking.fareEstimate || 0}</p>
+                          <p className="text-lg font-bold text-green-600">
+                            ₹{booking.originalFare || (booking.fareEstimate + (booking.firstRideDiscount || 0) + (booking.discountAmount || 0))}
+                          </p>
+                          {((booking.firstRideDiscount || 0) + (booking.discountAmount || 0) > 0) && (
+                            <span className="text-[10px] bg-emerald-50 text-emerald-700 font-bold px-1.5 py-0.5 rounded border border-emerald-200 block">
+                              Incl. ₹{(booking.firstRideDiscount || 0) + (booking.discountAmount || 0)} Subsidy
+                            </span>
+                          )}
                           <p className="text-xs text-gray-500">{booking.rideType || 'Ride'} • {booking.estimatedDistanceKm || 0} km</p>
                         </div>
                         <div className="flex gap-2">

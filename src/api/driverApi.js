@@ -229,5 +229,26 @@ export const driverService = {
   clearDestinationFilter: async () => {
     const response = await driverApi.post('/drivers/clear-destination');
     return response.data;
+  },
+  // NEW: Rental Booking
+  acceptRentalBooking: async (bookingId) => {
+    const response = await driverApi.put(`/rentals/bookings/${bookingId}/accept`);
+    return response.data;
+  },
+  getDriverRentalBookings: async () => {
+    const response = await driverApi.get('/rentals/driver/my-bookings');
+    return response.data;
+  },
+  startRentalRide: async (bookingId, otp) => {
+    const response = await driverApi.post('/rentals/start-trip', { bookingId, otp });
+    return response.data;
+  },
+  endRentalTrip: async (bookingId, totalDistanceTravelled, paymentMethod) => {
+    const response = await driverApi.post('/rentals/end-trip', { bookingId, totalDistanceTravelled, paymentMethod });
+    return response.data;
+  },
+  verifyRentalPayment: async (paymentData) => {
+    const response = await driverApi.post('/rentals/verify-payment', paymentData);
+    return response.data;
   }
 };

@@ -339,6 +339,11 @@ export default function ScheduledJobs() {
                                             <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-[10px] font-black uppercase tracking-widest">
                                                 Bulk Trip
                                             </span>
+                                            {job.myCategoryName && (
+                                                <span className="px-2.5 py-1 bg-purple-100 text-purple-700 border border-purple-200 rounded-full text-[10px] font-bold">
+                                                    {job.myCategoryName}
+                                                </span>
+                                            )}
                                             <span className="text-xs font-bold text-gray-400">ID: #{job._id.slice(-8)}</span>
                                             {job.isOutstation && (
                                                 <span className="px-3 py-1 bg-red-100 text-red-600 border border-red-200 rounded-full text-[10px] font-black uppercase tracking-widest flex items-center gap-1">
@@ -346,8 +351,13 @@ export default function ScheduledJobs() {
                                                 </span>
                                             )}
                                         </div>
-                                        <div className="flex items-center gap-1 text-green-600 font-bold">
-                                            <span className="text-lg">&#8377;{(job.totalPriceWithTax || job.offeredPrice)?.toLocaleString()}</span>
+                                        <div className="flex flex-col items-end">
+                                            <div className="flex items-center gap-1 text-green-600 font-bold">
+                                                <span className="text-lg">&#8377;{(job.myPayoutAmount || job.totalPriceWithTax || job.offeredPrice)?.toLocaleString()}</span>
+                                            </div>
+                                            <span className="text-[10px] font-semibold text-gray-500">
+                                                {job.myPayoutSettled ? '✅ Wallet Settled' : job.myPayoutAmount ? 'Your Category Earning' : 'Total Deal'}
+                                            </span>
                                         </div>
                                     </div>
 

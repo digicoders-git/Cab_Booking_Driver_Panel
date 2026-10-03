@@ -536,9 +536,18 @@ export default function DriverTripDetail() {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <FaRupeeSign className="text-green-600" />
-            <span className="text-sm font-semibold text-gray-700">Fare Estimate</span>
+            <span className="text-sm font-semibold text-gray-700">Total Fare Value</span>
           </div>
-          <span className="text-2xl font-bold text-green-600">₹{trip?.fareEstimate || 0}</span>
+          <div className="text-right">
+            <span className="text-2xl font-bold text-green-600">
+              ₹{trip?.originalFare || (trip?.fareEstimate + (trip?.firstRideDiscount || 0) + (trip?.discountAmount || 0))}
+            </span>
+            {((trip?.firstRideDiscount || 0) + (trip?.discountAmount || 0) > 0) && (
+              <span className="block text-[10px] text-blue-600 font-bold bg-blue-50 px-1.5 py-0.5 rounded border border-blue-100 mt-0.5">
+                Collect: ₹{trip?.actualFare || trip?.fareEstimate} • Subsidy: ₹{(trip?.firstRideDiscount || 0) + (trip?.discountAmount || 0)}
+              </span>
+            )}
+          </div>
         </div>
         <div className="flex items-center justify-between mt-2">
           <span className="text-xs text-gray-500">Ride Type</span>
@@ -744,12 +753,17 @@ export default function DriverTripDetail() {
           <div className="space-y-3">
             {collectCashRequest ? (
                <div className="bg-green-50 border-2 border-green-500 rounded-2xl p-6 text-center shadow-lg animate-pulse">
-                  <h2 className="text-xl font-black text-green-800 uppercase tracking-wide">Collect Cash</h2>
+                  <h2 className="text-xl font-black text-green-800 uppercase tracking-wide">Collect Cash from Passenger</h2>
                   <p className="text-4xl font-black text-green-600 mt-2">₹{finalFareToCollect || trip?.actualFare || trip?.fareEstimate}</p>
+                  {((trip?.firstRideDiscount || 0) + (trip?.discountAmount || 0) > 0) && (
+                    <div className="mt-3 bg-emerald-100/90 border border-emerald-300 rounded-xl p-2.5 text-xs text-emerald-900 font-bold">
+                      🎉 +₹{(trip?.firstRideDiscount || 0) + (trip?.discountAmount || 0)} Company Offer Subsidy will be credited to your Wallet by Admin!
+                    </div>
+                  )}
                   <button
                     onClick={handleConfirmCashCollection}
                     disabled={actionLoading}
-                    className="w-full mt-4 py-4 bg-green-600 text-white rounded-xl font-bold text-lg flex items-center justify-center gap-2 shadow-md hover:bg-green-700 transition-all"
+                    className="w-full mt-4 py-4 bg-green-600 text-white rounded-xl font-bold text-lg flex items-center justify-center gap-2 shadow-md hover:bg-green-700 transition-all cursor-pointer"
                   >
                     {actionLoading ? <div className="animate-spin h-5 w-5 border-2 border-white border-t-transparent rounded-full" /> : <><FaCheckCircle size={20} /> Cash Received</>}
                   </button>

@@ -9,6 +9,7 @@ import routes from "./route/SidebarRaoute";
 // Load extra driver pages explicitly
 const DriverRegister = lazy(() => import("./pages/driver/DriverRegister"));
 const DriverTripDetail = lazy(() => import("./pages/driver/DriverTripDetail"));
+const DriverRentalTripDetail = lazy(() => import("./pages/driver/DriverRentalTripDetail"));
 const DriverSupportTicket = lazy(() => import("./pages/driver/DriverSupportTicket"));
 
 const LoadingSpinner = () => (
@@ -55,6 +56,7 @@ function App() {
             
             {/* Hidden protected routes not registered in sidebar array */}
             <Route path="/driver/trip/:id" element={<Suspense fallback={<LoadingSpinner />}><DriverTripDetail /></Suspense>} />
+            <Route path="/driver/rental/:id" element={<Suspense fallback={<LoadingSpinner />}><DriverRentalTripDetail /></Suspense>} />
             <Route path="/driver/ticket/:id" element={<Suspense fallback={<LoadingSpinner />}><DriverSupportTicket /></Suspense>} />
 
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
