@@ -4,6 +4,7 @@ import { driverService } from '../../api/driverApi';
 import { toast } from 'sonner';
 import { FaCar, FaHistory, FaSearch, FaEye, FaChevronLeft, FaChevronRight, FaStar } from 'react-icons/fa';
 import { MapPin, Navigation, DollarSign, Award, X, ChevronsLeft, ChevronsRight, Clock, AlertCircle, CheckCircle, Ban } from 'lucide-react';
+import Swal from 'sweetalert2';
 import RateUserModal from '../../components/RateUserModal';
 
 const CHART_COLORS = { primary: '#3B82F6', success: '#10B981', warning: '#F59E0B', danger: '#EF4444', purple: '#8B5CF6' };
@@ -41,6 +42,36 @@ export default function DriverRentalTrips() {
       toast.error('Failed to load rental trips');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleCancelFromTable = async (bookingId) => {
+    const result = await Swal.fire({
+      title: 'Cancel Rental Ride?',
+      text: 'Are you sure you want to cancel this rental booking? The customer will be notified.',
+      icon: 'warning',
+      input: 'text',
+      inputPlaceholder: 'Reason for cancellation (optional)',
+      showCancelButton: true,
+      confirmButtonText: 'Yes, Cancel',
+      cancelButtonText: 'No',
+      confirmButtonColor: '#EF4444',
+      cancelButtonColor: '#6B7280',
+    });
+
+    if (result.isConfirmed) {
+      try {
+        const reason = result.value || 'Driver cancelled the trip';
+        const res = await driverService.cancelRentalBooking(bookingId, reason);
+        if (res.success) {
+          toast.success('Rental ride cancelled successfully');
+          fetchTrips();
+        } else {
+          toast.error(res.message || 'Failed to cancel rental ride');
+        }
+      } catch (err) {
+        toast.error(err.response?.data?.message || err.message || 'Failed to cancel rental ride');
+      }
     }
   };
 
@@ -221,6 +252,16 @@ export default function DriverRentalTrips() {
                               >
                                 View Details
                               </button>
+                              {/* Cancel Button if Accepted */}
+                              {(trip.status || trip.bookingStatus)?.toLowerCase() === 'accepted' && (
+                                <button
+                                  onClick={() => handleCancelFromTable(trip._id)}
+                                  className="px-2.5 py-1.5 bg-red-50 text-red-600 hover:bg-red-600 hover:text-white rounded-lg text-xs font-bold transition-colors"
+                                  title="Cancel this rental booking"
+                                >
+                                  Cancel
+                                </button>
+                              )}
                               {/* Rate User Button */}
                               {(trip.status || trip.bookingStatus)?.toLowerCase() === 'completed' && !trip.userRating && (
                                 <button

@@ -6,7 +6,7 @@ import {
   FaCar, FaMapMarkerAlt, FaCheckCircle, 
   FaChevronLeft, FaClock, FaRupeeSign, FaPlay
 } from 'react-icons/fa';
-import { Flag, Loader2 } from 'lucide-react';
+import { Flag, Loader2, Ban } from 'lucide-react';
 import Swal from 'sweetalert2';
 import { loadGoogleMaps, createLocationMarker } from '../../utils/mapUtils';
 import { getSocket } from '../../socket/socket';
@@ -20,6 +20,7 @@ export default function DriverRentalTripDetail() {
   const [otpLoading, setOtpLoading] = useState(false);
   const [otpInput, setOtpInput] = useState('');
   const [endLoading, setEndLoading] = useState(false);
+  const [cancelLoading, setCancelLoading] = useState(false);
   const [mapLoaded, setMapLoaded] = useState(false);
   
   const mapRef = useRef(null);
@@ -235,6 +236,39 @@ export default function DriverRentalTripDetail() {
       fetchTripDetail(); // Fetch fresh status from backend to sync UI
     } finally {
       setOtpLoading(false);
+    }
+  };
+
+  const handleCancelRide = async () => {
+    const result = await Swal.fire({
+      title: 'Cancel Rental Ride?',
+      text: 'Are you sure you want to cancel this rental ride? The customer will be notified.',
+      icon: 'warning',
+      input: 'text',
+      inputPlaceholder: 'Reason for cancellation (optional)',
+      showCancelButton: true,
+      confirmButtonText: 'Yes, Cancel Ride',
+      cancelButtonText: 'No, Keep It',
+      confirmButtonColor: '#EF4444',
+      cancelButtonColor: '#6B7280',
+    });
+
+    if (result.isConfirmed) {
+      try {
+        setCancelLoading(true);
+        const reason = result.value || 'Driver cancelled the trip';
+        const res = await driverService.cancelRentalBooking(id, reason);
+        if (res.success) {
+          toast.success('Rental ride cancelled successfully');
+          navigate('/driver/rentals');
+        } else {
+          toast.error(res.message || 'Failed to cancel rental ride');
+        }
+      } catch (err) {
+        toast.error(err.response?.data?.message || err.message || 'Failed to cancel rental ride');
+      } finally {
+        setCancelLoading(false);
+      }
     }
   };
 
@@ -568,6 +602,20 @@ export default function DriverRentalTripDetail() {
                 >
                   {otpLoading ? <Loader2 className="animate-spin" size={20} /> : <FaPlay size={16} />} 
                   {otpLoading ? 'Verifying...' : 'Start Ride'}
+                </button>
+              </div>
+
+              {/* Cancel Button */}
+              <div className="mt-6 pt-5 border-t border-blue-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <p className="text-xs text-gray-500">Need to cancel this booking due to an emergency or vehicle issue?</p>
+                <button
+                  type="button"
+                  onClick={handleCancelRide}
+                  disabled={cancelLoading}
+                  className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-red-200 bg-red-50 hover:bg-red-100 text-red-600 font-bold text-sm transition-all shadow-sm active:scale-95 disabled:opacity-50"
+                >
+                  {cancelLoading ? <Loader2 className="animate-spin" size={16} /> : <Ban size={16} />}
+                  Cancel Rental Ride
                 </button>
               </div>
             </div>
