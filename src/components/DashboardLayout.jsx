@@ -434,7 +434,9 @@ const DashboardLayout = () => {
               if (rentalRequest?.bookingId) {
                 await driverService.rejectRentalBooking(rentalRequest.bookingId);
               }
-            } catch (_) {}
+            } catch (err) {
+              console.warn('Rental reject error:', err);
+            }
             toast.info('❌ Rental Ride Rejected');
             setShowRentalModal(false);
             setRentalRequest(null);
