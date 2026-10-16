@@ -265,12 +265,19 @@ const DashboardLayout = () => {
       }
     };
 
+    const onRentalTimeout = (data) => {
+      console.log('⏰ [GLOBAL] rental_request_timeout received:', data);
+      setShowRentalModal(false);
+      setRentalRequest(null);
+    };
+
     socket.on('new_ride_request', onNewRequest);
     socket.on('ride_request_timeout', onRideTimeout);
     socket.on('ride_request_cancelled', onRideCancelled);
     socket.on('new_agent_lead', onNewAgentLead);
     socket.on('new_rental_request', onNewRentalRequest);
     socket.on('rental_request_accepted', onRentalRequestAccepted);
+    socket.on('rental_request_timeout', onRentalTimeout);
 
     return () => {
       // ✅ Specific removal, NOT global socket.off()
@@ -281,6 +288,7 @@ const DashboardLayout = () => {
       socket.off('new_agent_lead', onNewAgentLead);
       socket.off('new_rental_request', onNewRentalRequest);
       socket.off('rental_request_accepted', onRentalRequestAccepted);
+      socket.off('rental_request_timeout', onRentalTimeout);
       console.log('🔌 Cleaned up Layout listeners specifically');
     };
   }, [admin?._id]);
@@ -421,7 +429,12 @@ const DashboardLayout = () => {
               toast.error(err?.response?.data?.message || 'Failed to accept rental ride');
             }
           }}
-          onReject={() => {
+          onReject={async () => {
+            try {
+              if (rentalRequest?.bookingId) {
+                await driverService.rejectRentalBooking(rentalRequest.bookingId);
+              }
+            } catch (_) {}
             toast.info('❌ Rental Ride Rejected');
             setShowRentalModal(false);
             setRentalRequest(null);

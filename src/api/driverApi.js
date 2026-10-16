@@ -235,6 +235,10 @@ export const driverService = {
     const response = await driverApi.put(`/rentals/bookings/${bookingId}/accept`);
     return response.data;
   },
+  rejectRentalBooking: async (bookingId) => {
+    const response = await driverApi.put(`/rentals/bookings/${bookingId}/reject`);
+    return response.data;
+  },
   getDriverRentalBookings: async () => {
     const response = await driverApi.get('/rentals/driver/my-bookings');
     return response.data;
