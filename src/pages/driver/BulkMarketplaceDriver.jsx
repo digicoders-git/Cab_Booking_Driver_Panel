@@ -6,6 +6,7 @@ import { useNavigate } from "react-router-dom";
 
 export default function BulkMarketplaceDriver() {
   const [bookings, setBookings] = useState([]);
+  const [securityPct, setSecurityPct] = useState(20);
   const [loading, setLoading] = useState(true);
   const [fetching, setFetching] = useState(false);
   const [walletBalance, setWalletBalance] = useState(0);
@@ -25,6 +26,9 @@ export default function BulkMarketplaceDriver() {
 
       if (bookingsRes.success) {
         setBookings(bookingsRes.bookings || []);
+        if (bookingsRes.securityPct !== undefined) {
+          setSecurityPct(bookingsRes.securityPct);
+        }
       }
       if (walletRes.success) {
         setWalletBalance(walletRes.walletBalance || 0);
@@ -39,7 +43,7 @@ export default function BulkMarketplaceDriver() {
 
   const handleAcceptDeal = async (booking) => {
     const displayPrice = booking.totalPriceWithTax || booking.offeredPrice;
-    const securityAmount = booking.advancePayment?.amount || Math.round(displayPrice * 0.2); // approx logic if missing
+    const securityAmount = Math.round(displayPrice * (securityPct / 100));
 
     const result = await Swal.fire({
       title: 'Accept Bulk Deal?',

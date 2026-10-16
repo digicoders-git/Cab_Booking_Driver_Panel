@@ -14,6 +14,7 @@ const MyAcceptedLeads = lazy(() => import("../pages/driver/MyAcceptedLeads"));
 const FixedRouteMarketplaceDriver = lazy(() => import("../pages/FixedRouteMarketplaceDriver"));
 const MyPackageRidesDriver = lazy(() => import("../pages/MyPackageRidesDriver"));
 const DriverRentalTrips = lazy(() => import("../pages/driver/DriverRentalTrips"));
+const AssignedSubscriptions = lazy(() => import("../pages/driver/AssignedSubscriptions"));
 
 const DestinationFilter = lazy(() => import("../pages/driver/DestinationFilter"));
 
@@ -28,6 +29,7 @@ const routes = [
   { path: "/driver/my-accepted-leads", component: MyAcceptedLeads, name: "Accepted Leads", icon: FaCheckCircle },
   { path: "/driver/fixed-marketplace", component: FixedRouteMarketplaceDriver, name: "Package Rides", icon: FaStore },
   { path: "/driver/my-packages", component: MyPackageRidesDriver, name: "My Package Rides", icon: FaCheckCircle },
+  { path: "/driver/assigned-subscriptions", component: AssignedSubscriptions, name: "My Commute Passes", icon: FaCheckCircle },
   { path: "/driver/notifications", component: DriverNotifications, name: "Notifications", icon: FaBell },
   { path: "/driver/support", component: DriverSupport, name: "Support", icon: FaHeadset },
   { path: "/driver/wallet", component: DriverWallet, name: "Wallet", icon: FaWallet },

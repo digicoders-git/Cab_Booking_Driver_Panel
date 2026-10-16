@@ -6,7 +6,7 @@ import {
     FaLayerGroup, FaCalendarAlt, FaMapMarkerAlt, FaCar, 
     FaClock, FaChevronRight, FaInfoCircle, FaRoad 
 } from 'react-icons/fa';
-import { MapPin, Navigation, Calendar, Clock, DollarSign } from 'lucide-react';
+import { MapPin, Navigation, Calendar, Clock, DollarSign, Download } from 'lucide-react';
 import Swal from 'sweetalert2';
 
 export default function ScheduledJobs() {
@@ -352,12 +352,25 @@ export default function ScheduledJobs() {
                                             )}
                                         </div>
                                         <div className="flex flex-col items-end">
+                                            {/* Driver Earning */}
                                             <div className="flex items-center gap-1 text-green-600 font-bold">
                                                 <span className="text-lg">&#8377;{(job.myPayoutAmount || job.totalPriceWithTax || job.offeredPrice)?.toLocaleString()}</span>
                                             </div>
-                                            <span className="text-[10px] font-semibold text-gray-500">
+                                            <span className="text-[10px] font-semibold text-gray-500 mb-2">
                                                 {job.myPayoutSettled ? '✅ Wallet Settled' : job.myPayoutAmount ? 'Your Category Earning' : 'Total Deal'}
                                             </span>
+
+                                            {/* Customer Final Bill */}
+                                            {job.offeredPrice && (
+                                                <>
+                                                    <div className="flex items-center gap-1 text-blue-600 font-bold">
+                                                        <span className="text-sm">&#8377;{Math.round(job.offeredPrice * 1.05).toLocaleString()}</span>
+                                                    </div>
+                                                    <span className="text-[10px] font-semibold text-gray-500">
+                                                        Customer Final Bill
+                                                    </span>
+                                                </>
+                                            )}
                                         </div>
                                     </div>
 
@@ -380,11 +393,11 @@ export default function ScheduledJobs() {
                                     </div>
 
                                     {job.isOutstation && (
-                                        <div className="mt-4 p-3 bg-red-50 border border-red-100 rounded-xl flex items-start gap-2">
-                                            <FaInfoCircle className="text-red-500 mt-0.5 shrink-0" />
+                                        <div className="mt-4 p-3 bg-blue-50 border border-blue-100 rounded-xl flex items-start gap-2">
+                                            <FaInfoCircle className="text-blue-500 mt-0.5 shrink-0" />
                                             <div>
-                                                <p className="text-xs font-bold text-red-700 uppercase">Outstation Ride</p>
-                                                <p className="text-[10px] text-red-600 mt-0.5">Please collect State/Toll Tax directly from the rider during the trip. This is not included in the prepaid amount.</p>
+                                                <p className="text-xs font-bold text-blue-700 uppercase">Outstation Ride</p>
+                                                <p className="text-[10px] text-blue-600 mt-0.5">State/MCD Tax (₹{job.mcdStateTaxApplied || 0}) is already added to the final customer bill. Do not ask for extra state tax.</p>
                                             </div>
                                         </div>
                                     )}
@@ -427,9 +440,20 @@ export default function ScheduledJobs() {
                                         </button>
                                     )}
                                     {job.myStatus === 'Completed' && (
-                                        <div className="text-center py-2 bg-gray-100 rounded-xl text-gray-500 text-xs font-bold">
-                                            Finished
-                                        </div>
+                                        <>
+                                            <div className="text-center py-2 bg-gray-100 rounded-xl text-gray-500 text-xs font-bold">
+                                                Finished
+                                            </div>
+                                            <button 
+                                                className="w-full py-3 bg-purple-600 text-white rounded-xl text-xs font-bold shadow-lg shadow-purple-200 hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-2"
+                                                onClick={() => {
+                                                    const token = localStorage.getItem('driver_token') || localStorage.getItem('token');
+                                                    window.open(`http://localhost:5000/api/bulk-bookings/driver-receipt/${job._id}?token=${token}`, '_blank');
+                                                }}
+                                            >
+                                                <Download size={14} /> Download Receipt
+                                            </button>
+                                        </>
                                     )}
                                     <button 
                                         className="w-full py-3 bg-indigo-600 text-white rounded-xl text-xs font-bold shadow-lg shadow-indigo-200 hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-2"

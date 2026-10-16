@@ -1,24 +1,28 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import api from '../api/index';
 import { toast } from 'sonner';
 import Swal from 'sweetalert2';
 import { FaCar, FaClock, FaCheckCircle, FaUserAlt, FaArrowRight, FaRedo, FaUserTie, FaPhoneAlt, FaInfoCircle } from 'react-icons/fa';
-import { io } from 'socket.io-client';
-import { API_BASE_URL } from '../api/config';
+import { getSocket } from '../socket/socket';
 
 const FixedRouteMarketplaceDriver = () => {
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
+  const audioRef = useRef(null);
 
   useEffect(() => {
     fetchMarketplaceBookings();
     
     // Listen for new fixed bookings in marketplace
-    const socket = io(API_BASE_URL);
-    socket.on('newFixedBookingMarketplace', (data) => {
+    const socket = getSocket();
+    if (socket) {
+      socket.on('newFixedBookingMarketplace', (data) => {
       if (data && data.booking) {
         fetchMarketplaceBookings();
         toast.info("A new package ride is available!");
+        if (audioRef.current) {
+          audioRef.current.play().catch(e => console.log('Audio play blocked by browser:', e));
+        }
       }
     });
 
@@ -35,8 +39,15 @@ const FixedRouteMarketplaceDriver = () => {
         position: 'top-center'
       });
     });
+    }
 
-    return () => socket.disconnect();
+    return () => {
+      if (socket) {
+        socket.off('newFixedBookingMarketplace');
+        socket.off('removeFixedBookingMarketplace');
+        socket.off('fixedBookingCancelled');
+      }
+    };
   }, []);
 
   const fetchMarketplaceBookings = async () => {
@@ -290,6 +301,8 @@ const FixedRouteMarketplaceDriver = () => {
           </div>
         )}
       </div>
+
+      <audio ref={audioRef} src="/ringtone.mp3" preload="auto" />
     </div>
   );
 };

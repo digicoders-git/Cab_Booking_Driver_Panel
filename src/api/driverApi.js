@@ -250,5 +250,14 @@ export const driverService = {
   verifyRentalPayment: async (paymentData) => {
     const response = await driverApi.post('/rentals/verify-payment', paymentData);
     return response.data;
+  },
+  // NEW: Subscriptions
+  getAssignedSubscriptions: async () => {
+    const response = await driverApi.get('/drivers/assigned-subscriptions');
+    return response.data;
+  },
+  markSubscriptionAttendance: async (data) => {
+    const response = await driverApi.post('/drivers/mark-subscription-attendance', data);
+    return response.data;
   }
 };

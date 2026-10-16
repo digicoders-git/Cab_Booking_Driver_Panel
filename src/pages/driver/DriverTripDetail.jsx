@@ -93,6 +93,17 @@ export default function DriverTripDetail() {
               allowOutsideClick: false,
               backdrop: `rgba(239, 68, 68, 0.15) blur(4px)`
             }).then(() => { navigate('/dashboard'); });
+          } else if (data.status === 'Completed') {
+            setTrip(prev => prev ? { ...prev, bookingStatus: 'Completed' } : null);
+            Swal.fire({
+              icon: 'success',
+              title: 'Ride Completed! 🎉',
+              text: data.message || 'The ride has been successfully marked as completed.',
+              confirmButtonText: 'Back to Dashboard',
+              confirmButtonColor: '#10B981',
+              allowOutsideClick: false,
+              backdrop: `rgba(16, 185, 129, 0.15) blur(4px)`
+            }).then(() => { navigate('/dashboard'); });
           } else {
             console.log("🔄 Auto-refreshing trip data...");
             fetchTrip();
