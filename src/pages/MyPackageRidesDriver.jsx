@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api/index';
 import { toast } from 'sonner';
-import { FaCar, FaClock, FaUserAlt, FaCheckCircle, FaPhoneAlt, FaMoneyBillWave, FaArrowRight, FaRedo, FaKey, FaUserTie, FaInfoCircle } from 'react-icons/fa';
+import { FaCar, FaClock, FaUserAlt, FaCheckCircle, FaPhoneAlt, FaMoneyBillWave, FaArrowRight, FaRedo, FaKey, FaUserTie, FaInfoCircle, FaFileInvoiceDollar } from 'react-icons/fa';
 import Swal from 'sweetalert2';
 import { getSocket } from '../socket/socket';
 
@@ -33,10 +33,25 @@ const MyPackageRidesDriver = () => {
     }
   };
 
-  const handleCompleteRide = async (bookingId) => {
+  const handleDownloadReceipt = (bookingId) => {
+    const token = localStorage.getItem('driver_token') || localStorage.getItem('driver-token') || localStorage.getItem('token');
+    const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+    const url = `${baseUrl}/api/fixed-routes/bookings/${bookingId}/receipt?token=${token}`;
+    window.open(url, '_blank');
+  };
+
+  const handleCompleteRide = async (bookingId, maxDist = 0) => {
     const result = await Swal.fire({
       title: 'Complete Package Ride?',
       text: 'Have you reached the destination and dropped the customer?',
+      input: 'number',
+      inputLabel: 'Total Distance Driven (KM)',
+      inputPlaceholder: 'Meter Reading / Actual KM Driven',
+      inputValue: maxDist || '',
+      inputAttributes: {
+        step: 'any',
+        min: '0'
+      },
       icon: 'question',
       showCancelButton: true,
       confirmButtonColor: '#10b981',
@@ -46,7 +61,8 @@ const MyPackageRidesDriver = () => {
 
     if (result.isConfirmed) {
       try {
-        await api.post(`/api/fixed-routes/bookings/${bookingId}/complete-driver`, {});
+        const totalDistanceDriven = result.value ? parseFloat(result.value) : 0;
+        await api.post(`/api/fixed-routes/bookings/${bookingId}/complete-driver`, { totalDistanceDriven });
         Swal.fire({
           title: 'Ride Completed!',
           text: 'The package ride has been marked as complete.',
@@ -384,11 +400,29 @@ const MyPackageRidesDriver = () => {
               {booking.status === 'Started' && (
                 <div className="p-4 bg-emerald-50 border-t border-emerald-100 mt-auto">
                   <button
-                    onClick={() => handleCompleteRide(booking._id)}
+                    onClick={() => handleCompleteRide(booking._id, booking.maxDistanceKm)}
                     className="w-full flex justify-center items-center space-x-2 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-bold py-3 px-4 rounded-xl transition-all duration-300 shadow-md shadow-emerald-500/20 active:scale-95 text-sm"
                   >
                     <FaCheckCircle className="transition-transform" />
                     <span>Complete Ride</span>
+                  </button>
+                </div>
+              )}
+
+              {/* Download Receipt Button - for Completed rides */}
+              {booking.status === 'Completed' && (
+                <div className="p-4 bg-emerald-50/60 border-t border-emerald-100 mt-auto flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-1.5 text-emerald-800 text-xs font-bold">
+                    <FaCheckCircle className="text-emerald-600" />
+                    <span>Ride Completed</span>
+                  </div>
+                  <button
+                    onClick={() => handleDownloadReceipt(booking._id)}
+                    className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-bold text-xs rounded-xl shadow-md shadow-emerald-500/20 transition active:scale-95 cursor-pointer"
+                    title="Download Tax Invoice / Receipt"
+                  >
+                    <FaFileInvoiceDollar size={14} />
+                    <span>Download Receipt</span>
                   </button>
                 </div>
               )}

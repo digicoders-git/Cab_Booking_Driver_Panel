@@ -129,7 +129,7 @@ export default function BulkMarketplaceDriver() {
                 <div>
                   <div className="text-2xl font-black text-gray-900 flex items-center gap-1">
                     <FaRupeeSign className="text-gray-400 text-lg" />
-                    {booking.totalPriceWithTax || booking.offeredPrice}
+                    {Number(booking.totalPriceWithTax || booking.offeredPrice || 0).toLocaleString("en-IN")}
                   </div>
                   <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider mt-1">Total Deal Value</div>
                 </div>

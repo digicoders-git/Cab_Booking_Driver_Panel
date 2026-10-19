@@ -74,7 +74,7 @@ export default function ScheduledJobs() {
     };
 
     const handleEndTrip = async (job) => {
-        const remainingBalance = (job.totalPriceWithTax || job.offeredPrice) - (job.advancePayment?.amount || 0);
+        const remainingBalance = Math.round((job.totalPriceWithTax || job.offeredPrice) - (job.advancePayment?.amount || 0));
 
         const result = await Swal.fire({
             title: 'End Trip?',
